@@ -106,7 +106,8 @@ with timer ID of -1::
     tim.init(period=5000, mode=Timer.ONE_SHOT, callback=lambda t:print(1))
     tim.init(period=2000, mode=Timer.PERIODIC, callback=lambda t:print(2))
 
-The period is in milliseconds.
+The period is in milliseconds, and has a maximum value of 6870947
+(which equates to 1 hour, 54 minutes, 30 seconds, and 947 milliseconds).
 
 Pins and GPIO
 -------------
