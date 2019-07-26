@@ -20,22 +20,20 @@ STATIC mp_obj_t encode_text(
         qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
         qrcodegen_Mask_AUTO, true);
     if (!ok) {
-        mp_raise_ValueError("Error generating QR code");
+        mp_raise_ValueError("Error generating QR code"); // Not quite the right Exception...
     }
-
-    // fixme: Good candidate for static allocation?
-    mp_obj_t column[MAX_QR_SIZE];
-    mp_obj_t row[MAX_QR_SIZE];
 
     int size = qrcodegen_getSize(qr0);
-    //assert(size <= MAX_QR_SIZE);
+    assert(size <= MAX_QR_SIZE);
+    mp_obj_tuple_t *row = MP_OBJ_TO_PTR(mp_obj_new_tuple(size, NULL));
     for (int y = 0; y < size; y++) {
+        mp_obj_tuple_t *column = MP_OBJ_TO_PTR(mp_obj_new_tuple(size, NULL));
         for (int x = 0; x < size; x++) {
-            column[x] = mp_obj_new_bool(qrcodegen_getModule(qr0, x, y));
+            column->items[x] = mp_obj_new_bool(qrcodegen_getModule(qr0, x, y));
         }
-        row[y] = mp_obj_new_tuple(size, column);
+        row->items[y] = MP_OBJ_FROM_PTR(column);
     }
-    return mp_obj_new_tuple(size, row);
+    return MP_OBJ_FROM_PTR(row);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(encode_text_obj, encode_text);
 
@@ -44,7 +42,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(encode_text_obj, encode_text);
 STATIC const mp_rom_map_elem_t qr_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_qr) },
     { MP_ROM_QSTR(MP_QSTR_encode_text), MP_ROM_PTR(&encode_text_obj) }, // Oli: Maybe prefix module name ahead of encode_text_obj?
-    { MP_ROM_QSTR(MP_QSTR_ECC_LOW), MP_ROM_INT(qrcodegen_Ecc_LOW) },
+    { MP_ROM_QSTR(MP_QSTR_ECC_LOW), MP_ROM_INT(qrcodegen_Ecc_LOW) }, // Any way to make these some sort of Enum
     { MP_ROM_QSTR(MP_QSTR_ECC_MEDIUM), MP_ROM_INT(qrcodegen_Ecc_MEDIUM) },
     { MP_ROM_QSTR(MP_QSTR_ECC_QUARTILE), MP_ROM_INT(qrcodegen_Ecc_QUARTILE) },
     { MP_ROM_QSTR(MP_QSTR_ECC_HIGH), MP_ROM_INT(qrcodegen_Ecc_HIGH) },
