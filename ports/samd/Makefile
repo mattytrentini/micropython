@@ -43,6 +43,8 @@ LDFLAGS += --gc-sections
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
+CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
+
 SRC_C = \
 	main.c \
 	modutime.c \
@@ -65,6 +67,7 @@ SRC_C = \
 	lib/utils/printf.c \
 	lib/utils/pyexec.c \
 	lib/utils/stdout_helpers.c \
+	$(SRC_MOD)
 
 ifeq ($(MCU_SERIES),SAMD21)
 SRC_C += lib/tinyusb/src/portable/microchip/samd21/dcd_samd21.c
@@ -74,12 +77,16 @@ SRC_C += lib/tinyusb/src/portable/microchip/samd51/dcd_samd51.c
 SRC_S = lib/utils/gchelper_m3.s
 endif
 
+EXTMOD_SRC_C = $(addprefix extmod/,)
 # List of sources for qstr extraction
-SRC_QSTR += modutime.c modmachine.c
+SRC_QSTR += modutime.c modmachine.c $(EXTMOD_SRC_C) 
+# Append any auto-generated sources that are needed by sources listed in SRC_QSTR
+SRC_QSTR_AUTO_DEPS +=
 
 OBJ += $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
+OBJ += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 
 # Workaround for bug in older gcc, warning on "static usbd_device_t _usbd_dev = { 0 };"
 $(BUILD)/lib/tinyusb/src/device/usbd.o: CFLAGS += -Wno-missing-braces

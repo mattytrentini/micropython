@@ -172,8 +172,6 @@ extern const struct _mp_print_t mp_stderr_print;
 #define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_ASYNC_KBD_INTR      (1)
 
-#define MODULE_QR_ENABLED                   (1)
-
 extern const struct _mp_obj_module_t mp_module_machine;
 extern const struct _mp_obj_module_t mp_module_os;
 extern const struct _mp_obj_module_t mp_module_uos_vfs;

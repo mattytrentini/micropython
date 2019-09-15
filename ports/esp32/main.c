@@ -52,6 +52,7 @@
 #include "modmachine.h"
 #include "modnetwork.h"
 #include "mpthreadport.h"
+#include "qrcodegen.h"
 
 // MicroPython runs as a task under FreeRTOS
 #define MP_TASK_PRIORITY        (ESP_TASK_PRIO_MIN + 1)
@@ -110,6 +111,19 @@ soft_reset:
     machine_pins_init();
 
     // run boot-up scripts
+    printf("something");
+    uint32_t t1 = mp_hal_ticks_ms();
+
+    uint8_t qr0[qrcodegen_BUFFER_LEN_MAX];
+    uint8_t tempBuffer[qrcodegen_BUFFER_LEN_MAX];
+    qrcodegen_encodeText("hello world",
+        tempBuffer, qr0, qrcodegen_Ecc_MEDIUM,
+        qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
+        qrcodegen_Mask_AUTO, true);
+    uint32_t t2 = mp_hal_ticks_ms();
+
+    printf("%d", t2 - t1);
+
     pyexec_frozen_module("_boot.py");
     pyexec_file_if_exists("boot.py");
     if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
