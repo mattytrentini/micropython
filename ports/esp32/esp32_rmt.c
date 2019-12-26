@@ -61,15 +61,60 @@ STATIC mp_obj_t esp32_rmt_make_new(const mp_obj_type_t *type, size_t n_args, siz
         { MP_QSTR_id,        MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1} },
         { MP_QSTR_pin,       MP_ARG_REQUIRED | MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_clock_div,                   MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 8} }, // 100ns resolution
+        { MP_QSTR_idle_level,                  MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} }, // 0 as default
+        { MP_QSTR_tx_carrier,                  MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
     mp_uint_t channel_id = args[0].u_int;
     gpio_num_t pin_id = machine_pin_get_id(args[1].u_obj);
     mp_uint_t clock_div = args[2].u_int;
+    mp_uint_t idle_level = args[3].u_int;
+
+    rmt_config_t config;
 
     if (clock_div < 1 || clock_div > 255) {
         mp_raise_ValueError(MP_ERROR_TEXT("clock_div must be between 1 and 255"));
+    }
+    if (idle_level > 1) {
+        mp_raise_ValueError("idle_level can only be 0 or 1");
+    }
+
+    mp_obj_t tx_carrier = args[4].u_obj;
+    mp_uint_t tx_carrier_details_length = 0;
+    mp_obj_t* tx_carrier_details = NULL;
+    config.tx_config.carrier_en = 0; // Initialise to disabled (fixme: may not be necessary?)
+
+    if(mp_obj_is_type(tx_carrier, &mp_type_tuple)) {
+        mp_obj_tuple_get(tx_carrier, &tx_carrier_details_length, &tx_carrier_details);
+
+        if (tx_carrier_details_length != 2) {
+            mp_raise_ValueError("tx_carrier must be specified by three values: frequency, duty and level");
+        }
+
+        if (mp_obj_is_type(tx_carrier_details[0], &mp_type_int) &&
+            mp_obj_is_type(tx_carrier_details[1], &mp_type_int) &&
+            mp_obj_is_type(tx_carrier_details[2], &mp_type_int)) {
+
+            mp_uint_t frequency = mp_obj_get_int(tx_carrier_details[0]);
+            mp_uint_t duty = mp_obj_get_int(tx_carrier_details[1]);
+            mp_uint_t level = mp_obj_get_int(tx_carrier_details[2]);
+
+            if (frequency < 0) {
+                mp_raise_ValueError("frequency must be a positive integer");
+            }
+            if (duty < 0 || duty > 100) {
+                mp_raise_ValueError("duty must be between 0 and 100");
+            }
+            if (level < 0 || level > 1) {
+                mp_raise_ValueError("level must be 0 or 1");
+            }
+
+            config.tx_config.carrier_en = 1;
+            config.tx_config.carrier_freq_hz = frequency;
+            config.tx_config.carrier_duty_percent = duty;
+            config.tx_config.carrier_level = level;
+        }
     }
 
     esp32_rmt_obj_t *self = m_new_obj_with_finaliser(esp32_rmt_obj_t);
@@ -78,19 +123,14 @@ STATIC mp_obj_t esp32_rmt_make_new(const mp_obj_type_t *type, size_t n_args, siz
     self->pin = pin_id;
     self->clock_div = clock_div;
 
-    rmt_config_t config;
     config.rmt_mode = RMT_MODE_TX;
     config.channel = (rmt_channel_t)self->channel_id;
     config.gpio_num = self->pin;
     config.mem_block_num = 1;
     config.tx_config.loop_en = 0;
 
-    config.tx_config.carrier_en = 0;
-    config.tx_config.idle_output_en = 1;
-    config.tx_config.idle_level = 0;
-    config.tx_config.carrier_duty_percent = 0;
-    config.tx_config.carrier_freq_hz = 0;
-    config.tx_config.carrier_level = 1;
+    config.tx_config.idle_output_en = 1; // fixme: Any compelling reason to not enable idle output?
+    config.tx_config.idle_level = idle_level;
 
     config.clk_div = self->clock_div;
 
