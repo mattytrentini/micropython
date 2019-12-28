@@ -77,7 +77,7 @@ STATIC mp_obj_t esp32_rmt_make_new(const mp_obj_type_t *type, size_t n_args, siz
         mp_raise_ValueError(MP_ERROR_TEXT("clock_div must be between 1 and 255"));
     }
     if (idle_level > 1) {
-        mp_raise_ValueError("idle_level can only be 0 or 1");
+        mp_raise_ValueError(MP_ERROR_TEXT("idle_level can only be 0 or 1"));
     }
 
     mp_obj_t tx_carrier = args[4].u_obj;
@@ -89,7 +89,7 @@ STATIC mp_obj_t esp32_rmt_make_new(const mp_obj_type_t *type, size_t n_args, siz
         mp_obj_tuple_get(tx_carrier, &tx_carrier_details_length, &tx_carrier_details);
 
         if (tx_carrier_details_length != 2) {
-            mp_raise_ValueError("tx_carrier must be specified by three values: frequency, duty and level");
+            mp_raise_ValueError(MP_ERROR_TEXT("tx_carrier must be specified by three values: frequency, duty and level"));
         }
 
         if (mp_obj_is_type(tx_carrier_details[0], &mp_type_int) &&
@@ -101,13 +101,13 @@ STATIC mp_obj_t esp32_rmt_make_new(const mp_obj_type_t *type, size_t n_args, siz
             mp_uint_t level = mp_obj_get_int(tx_carrier_details[2]);
 
             if (frequency < 0) {
-                mp_raise_ValueError("frequency must be a positive integer");
+                mp_raise_ValueError(MP_ERROR_TEXT("frequency must be a positive integer"));
             }
             if (duty < 0 || duty > 100) {
-                mp_raise_ValueError("duty must be between 0 and 100");
+                mp_raise_ValueError(MP_ERROR_TEXT("duty must be between 0 and 100"));
             }
             if (level < 0 || level > 1) {
-                mp_raise_ValueError("level must be 0 or 1");
+                mp_raise_ValueError(MP_ERROR_TEXT("level must be 0 or 1"));
             }
 
             config.tx_config.carrier_en = 1;
@@ -205,27 +205,69 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(esp32_rmt_loop_obj, esp32_rmt_loop);
 
 STATIC mp_obj_t esp32_rmt_write_pulses(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_self,   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_pulses, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_start,  MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 1} },
+        { MP_QSTR_self,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_duration, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_data,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_start,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 1} },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     esp32_rmt_obj_t *self = MP_OBJ_TO_PTR(args[0].u_obj);
-    mp_obj_t pulses = args[1].u_obj;
-    mp_uint_t start = args[2].u_int;
 
-    if (start < 0 || start > 1) {
-        mp_raise_ValueError(MP_ERROR_TEXT("start must be 0 or 1"));
+    // # Method 1: Constant duration
+    // duration = 10000
+    // data = (1,0,1,1,1,0,1,0,1)
+    //
+    // # Method 2: Always toggle (current implementation)
+    // duration = (8000,11000,8000,11000,6000,13000,6000,3000,8000)
+    //
+    // # Method 3: Most flexi
+    // duration = (400,200,100,300,200,400)
+    // data = (1,0,1,1,0,1)
+    //
+    // Note: start is only valid for #2.
+    // fixme: Should error if start is specified when using #1 or #3.
+    // fixme: Check that arrays are the same length for #3
+
+    mp_obj_t duration_obj = args[1].u_obj;
+    mp_obj_t data_obj = args[2].u_obj;
+    mp_uint_t start = args[3].u_int;
+
+    mp_int_t fixed_duration = 0;
+    size_t duration_length = 0;
+    size_t data_length = 0;
+    mp_obj_t* duration_ptr = NULL;
+    mp_obj_t* data_ptr = NULL;
+    size_t num_pulses = 0;
+
+    if (data_obj == mp_const_none) {
+        // Method 2: Only method that doesn't use data
+        //printf("method 2\n");
+        mp_obj_get_array(duration_obj, &duration_length, &duration_ptr);
+        num_pulses = duration_length;
+
+        if (start < 0 || start > 1) {
+            mp_raise_ValueError(MP_ERROR_TEXT("start must be 0 or 1"));
+        }
+    } else {
+        // Method 1 or 3: data is supplied. Must be an array.
+        mp_obj_get_array(data_obj, &data_length, &data_ptr);
+        num_pulses = data_length;
+
+        if (mp_obj_is_int(duration_obj)) {
+            // Method 1: duration is a single int
+            //printf("method 1\n");
+            fixed_duration = mp_obj_get_int(duration_obj);
+        } else {
+            // Method 3: duration is an array
+            //printf("method 3\n");
+            mp_obj_get_array(duration_obj, &duration_length, &duration_ptr);
+        }
     }
 
-    size_t pulses_length = 0;
-    mp_obj_t *pulses_ptr = NULL;
-    mp_obj_get_array(pulses, &pulses_length, &pulses_ptr);
-
-    mp_uint_t num_items = (pulses_length / 2) + (pulses_length % 2);
+    mp_uint_t num_items = (num_pulses / 2) + (num_pulses % 2);
     if (num_items > self->num_items) {
         self->items = (rmt_item32_t *)m_realloc(self->items, num_items * sizeof(rmt_item32_t *));
         self->num_items = num_items;
@@ -233,13 +275,17 @@ STATIC mp_obj_t esp32_rmt_write_pulses(size_t n_args, const mp_obj_t *pos_args, 
 
     for (mp_uint_t item_index = 0; item_index < num_items; item_index++) {
         mp_uint_t pulse_index = item_index * 2;
-        self->items[item_index].duration0 = mp_obj_get_int(pulses_ptr[pulse_index++]);
-        self->items[item_index].level0 = start++; // Note that start _could_ wrap.
-        if (pulse_index < pulses_length) {
-            self->items[item_index].duration1 = mp_obj_get_int(pulses_ptr[pulse_index]);
-            self->items[item_index].level1 = start++;
+        self->items[item_index].duration0 = mp_obj_is_int(duration_obj) /* method 1 */ ? fixed_duration : mp_obj_get_int(duration_ptr[pulse_index]);
+        self->items[item_index].level0 = data_obj == mp_const_none /* method 2 */ ? start++ : mp_obj_get_int(data_ptr[pulse_index]);
+        //printf("duration=%d level=%d\n", self->items[item_index].duration0, self->items[item_index].level0);
+        pulse_index++;
+        if (pulse_index < num_pulses) {
+            self->items[item_index].duration1 = mp_obj_is_int(duration_obj) /* method 1 */ ? fixed_duration : mp_obj_get_int(duration_ptr[pulse_index]);
+            self->items[item_index].level1 = data_obj == mp_const_none /* method 2 */ ? start++ : mp_obj_get_int(data_ptr[pulse_index]);
+            //printf("duration=%d level=%d\n", self->items[item_index].duration1, self->items[item_index].level1);
         }
     }
+
     check_esp_err(rmt_write_items(self->channel_id, self->items, num_items, false /* non-blocking */));
 
     return mp_const_none;
