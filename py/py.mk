@@ -180,6 +180,7 @@ PY_EXTMOD_O_BASENAME = \
 	extmod/modubinascii.o \
 	extmod/virtpin.o \
 	extmod/machine_mem.o \
+	extmod/machine_pin.o \
 	extmod/machine_pinbase.o \
 	extmod/machine_signal.o \
 	extmod/machine_pulse.o \

@@ -36,3 +36,6 @@
 [submodule "lib/nxp_driver"]
 	path = lib/nxp_driver
 	url = https://github.com/hathach/nxp_driver.git
+[submodule "lib/samd-peripherals"]
+	path = lib/samd-peripherals
+	url = https://github.com/adafruit/samd-peripherals

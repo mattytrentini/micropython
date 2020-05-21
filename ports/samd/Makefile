@@ -19,20 +19,27 @@ QSTR_GLOBAL_DEPENDENCIES = $(BOARD_DIR)/mpconfigboard.h
 # Include py core make definitions
 include $(TOP)/py/py.mk
 
-GIT_SUBMODULES = lib/asf4 lib/tinyusb
+GIT_SUBMODULES = lib/asf4 lib/tinyusb lib/samd-peripherals
 
 INC += -I.
 INC += -I$(TOP)
 INC += -I$(BUILD)
 INC += -I$(BOARD_DIR)
 INC += -I$(TOP)/lib/cmsis/inc
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')
 INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/include
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/hal
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/hal/include
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/hal/utils/include
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/hri
+INC += -I$(TOP)/lib/asf4/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/hpl/port
+INC += -I$(TOP)/lib/samd-peripherals
 INC += -I$(TOP)/lib/tinyusb/src
 
 CFLAGS_MCU_SAMD21 = -mtune=cortex-m0plus -mcpu=cortex-m0plus -msoft-float
 CFLAGS_MCU_SAMD51 = -mtune=cortex-m4 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 CFLAGS = $(INC) -Wall -Werror -std=c99 -nostdlib -mthumb $(CFLAGS_MCU_$(MCU_SERIES)) -fsingle-precision-constant -Wdouble-promotion
-CFLAGS += -DMCU_$(MCU_SERIES) -D__$(CMSIS_MCU)__
+CFLAGS += -DMCU_$(MCU_SERIES) -D__$(CMSIS_MCU)__ -D$(MCU_SERIES)
 LDFLAGS = -nostdlib $(addprefix -T,$(LD_FILES)) -Map=$@.map --cref
 LIBS = $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
@@ -70,6 +77,9 @@ SRC_C = \
 	lib/utils/pyexec.c \
 	lib/utils/stdout_helpers.c \
 
+SRC_SAMD_C = \
+	lib/samd-peripherals/samd/$(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')/pins.c
+
 ifeq ($(MCU_SERIES),SAMD21)
 SRC_S = lib/utils/gchelper_m0.s
 else
@@ -81,6 +91,7 @@ SRC_QSTR += modutime.c modmachine.c
 
 OBJ += $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_SAMD_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
 
 # Workaround for bug in older gcc, warning on "static usbd_device_t _usbd_dev = { 0 };"
