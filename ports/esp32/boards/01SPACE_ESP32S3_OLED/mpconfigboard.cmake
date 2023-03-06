@@ -5,7 +5,7 @@ set(SDKCONFIG_DEFAULTS
     boards/sdkconfig.usb
     boards/sdkconfig.ble
     boards/sdkconfig.spiram_sx
-    boards/GENERIC_S3_SPIRAM/sdkconfig.board
+    boards/01SPACE_ESP32S3_OLED/sdkconfig.board
 )
 
 set(MICROPY_FROZEN_MANIFEST ${MICROPY_BOARD_DIR}/manifest.py)
