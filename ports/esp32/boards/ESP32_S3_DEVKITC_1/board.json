@@ -1,0 +1,23 @@
+{
+    "deploy": [
+        "../deploy_s3.md"
+    ],
+    "docs": "",
+    "features": [
+        "BLE",
+        "WiFi"
+    ],
+    "images": [],
+    "mcu": "esp32s3",
+    "product": "ESP32 S3 DevKitC 1",
+    "thumbnail": "",
+    "url": "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html",
+    "variants": [
+        "n8",
+        "n8r2",
+        "n8r8",
+        "n16r8v",
+        "n32r8v"
+    ],
+    "vendor": "Espressif"
+}

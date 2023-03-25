@@ -46,6 +46,10 @@ ifdef FROZEN_MANIFEST
        IDFPY_FLAGS += -D MICROPY_FROZEN_MANIFEST=$(FROZEN_MANIFEST)
 endif
 
+ifdef BOARD_VARIANT
+CMAKE_ARGS += -DBOARD_VARIANT=${BOARD_VARIANT}
+endif
+
 HELP_BUILD_ERROR ?= "See \033[1;31mhttps://github.com/micropython/micropython/wiki/Build-Troubleshooting\033[0m"
 
 all:
@@ -71,3 +75,8 @@ erase:
 
 submodules:
 	$(MAKE) -f ../../py/mkrules.mk GIT_SUBMODULES="$(GIT_SUBMODULES)" submodules
+
+query-variants:
+	@BOARD_VARIANTS=$$(cmake -B $(BUILD)/variants -DECHO_BOARD_VARIANTS=1 ${CMAKE_ARGS} -S . 2>&1 | \
+	                  grep '^BOARD_VARIANTS=' | cut -d= -f2); \
+	echo "VARIANTS: $${BOARD_VARIANTS}"
