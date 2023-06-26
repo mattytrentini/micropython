@@ -60,7 +60,7 @@ STATIC const madc_obj_t madc_obj[] = {
     {{&machine_adc_type}, ADCBLOCK2, ADC_CHANNEL_7, GPIO_NUM_27},
     {{&machine_adc_type}, ADCBLOCK2, ADC_CHANNEL_8, GPIO_NUM_25},
     {{&machine_adc_type}, ADCBLOCK2, ADC_CHANNEL_9, GPIO_NUM_26},
-    #elif CONFIG_IDF_TARGET_ESP32C3
+    #elif CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
     {{&machine_adc_type}, ADCBLOCK1, ADC_CHANNEL_0, GPIO_NUM_0},
     {{&machine_adc_type}, ADCBLOCK1, ADC_CHANNEL_1, GPIO_NUM_1},
     {{&machine_adc_type}, ADCBLOCK1, ADC_CHANNEL_2, GPIO_NUM_2},
@@ -246,7 +246,7 @@ STATIC const mp_rom_map_elem_t madc_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_WIDTH_10BIT), MP_ROM_INT(10) },
     { MP_ROM_QSTR(MP_QSTR_WIDTH_11BIT), MP_ROM_INT(11) },
     #endif
-    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
+    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32S3
     { MP_ROM_QSTR(MP_QSTR_WIDTH_12BIT), MP_ROM_INT(12) },
     #endif
     #if CONFIG_IDF_TARGET_ESP32S2

@@ -198,6 +198,10 @@ foreach(comp ${__COMPONENT_NAMES_RESOLVED})
     micropy_gather_target_properties(${comp})
 endforeach()
 
+
+list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/riscv/include)
+list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/soc/soc/include)
+
 # Include the main MicroPython cmake rules.
 include(${MICROPY_DIR}/py/mkrules.cmake)
 

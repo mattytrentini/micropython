@@ -28,7 +28,7 @@
 #include "py/mperrno.h"
 #include "py/mphal.h"
 
-#if MICROPY_PY_BLUETOOTH && MICROPY_BLUETOOTH_NIMBLE
+#if MICROPY_PY_BLUETOOTH && MICROPY_BLUETOOTH_NIMBLE && !CONFIG_IDF_TARGET_ESP32C6
 
 #define DEBUG_printf(...) // printf("nimble (esp32): " __VA_ARGS__)
 

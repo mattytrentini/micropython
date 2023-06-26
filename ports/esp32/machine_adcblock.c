@@ -40,7 +40,7 @@
 #define DEFAULT_VREF 1100
 
 madcblock_obj_t madcblock_obj[] = {
-    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
+    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32S3
     {{&machine_adcblock_type}, ADC_UNIT_1, 12, -1, {0}},
     {{&machine_adcblock_type}, ADC_UNIT_2, 12, -1, {0}},
     #elif CONFIG_IDF_TARGET_ESP32S2
@@ -67,7 +67,7 @@ void madcblock_bits_helper(madcblock_obj_t *self, mp_int_t bits) {
             self->width = ADC_WIDTH_BIT_11;
             break;
         #endif
-        #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
+        #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32S3
         case 12:
             self->width = ADC_WIDTH_BIT_12;
             break;
