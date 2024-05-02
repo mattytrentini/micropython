@@ -1,0 +1,22 @@
+{
+    "deploy": [
+        "deploy.md"
+    ],
+    "docs": "",
+    "features": [
+        "BLE",
+        "Battery Charging",
+        "Display",
+        "Dual-core",
+        "JST-SH",
+        "USB-C",
+        "WiFi"
+    ],
+    "images": [
+        "m5stack_dial.jpg"
+    ],
+    "mcu": "esp32s3",
+    "product": "Dial",
+    "url": "https://shop.m5stack.com/products/m5stack-dial-esp32-s3-smart-rotary-knob-w-1-28-round-touch-screen",
+    "vendor": "M5Stack"
+}
