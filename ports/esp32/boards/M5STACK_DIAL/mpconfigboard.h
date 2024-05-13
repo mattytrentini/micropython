@@ -10,7 +10,7 @@
 #define MICROPY_HW_I2C1_SCL (12)
 #define MICROPY_HW_I2C1_SDA (11)
 
-#define MICROPY_HW_SPI1_NAME            "SPI0"
+#define MICROPY_HW_SPI1_NAME            "SPI1"
 #define MICROPY_HW_SPI1_SCK             (6)
 #define MICROPY_HW_SPI1_MOSI            (5)
 #define MICROPY_HW_SPI1_MISO            (16) // Dummy pin
