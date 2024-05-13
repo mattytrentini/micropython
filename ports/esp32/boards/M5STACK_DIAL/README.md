@@ -1,7 +1,6 @@
 # M5Stack Dial
 
-Most useful docs:
-https://docs.m5stack.com/en/core/M5Dial
+[M5Stack Dial Docs](https://docs.m5stack.com/en/core/M5Dial)
 
 ## Rotary Encoder
 
@@ -11,25 +10,23 @@ great for this encoder.
 
 Install with `mpremote`:
 
-```
+```bash
 > mpremote mip install github:miketeachman/micropython-rotary
 ```
 
 Example:
-```
-paste mode; Ctrl-C to cancel, Ctrl-D to finish
-=== import time
-=== from rotary_irq_esp import RotaryIRQ
-=== r = RotaryIRQ(pin_num_clk=40, pin_num_dt=41, min_val=0, max_val=30, reverse=False, range_mode=RotaryIRQ.RANGE_WRAP)
-=== val_old = r.value()
-=== while True:
-===     val_new = r.value()
-===
-===     if val_old != val_new:
-===         val_old = val_new
-===         print('result =', val_new)
-===
-===     time.sleep_ms(50)
+
+```py
+import time
+from rotary_irq_esp import RotaryIRQ
+r = RotaryIRQ(pin_num_clk=40, pin_num_dt=41, min_val=0, max_val=30, reverse=False, range_mode=RotaryIRQ.RANGE_WRAP)
+val_old = r.value()
+while True:
+    val_new = r.value()
+    if val_old != val_new:
+        val_old = val_new
+        print('result =', val_new)
+    time.sleep_ms(50)
 ```
 
 ## RFID (WS1850S)
@@ -68,15 +65,32 @@ I2C address is `0x38`.
 appears to start in 'hibernation' mode:
 
 ```py
->>> lcd_reset = Pin.board.LCD_RESET
->>> lcd_reset.init(Pin.OUT)
->>> lcd_reset.on()
->>> [hex(x) for x in i2c.scan()] `'0x38'` will now appear.
-['0x28', '0x38', '0x51']
+Pin.board.LCD_RESET.init(Pin.OUT)
+Pin.board.LCD_RESET.on()
+[hex(x) for x in i2c.scan()] `'0x38'` will now appear.
+# ['0x28', '0x38', '0x51']
 ```
 
 Simple [Arduino example
 driver](https://github.com/mmMicky/TouchLib/blob/main/src/ModulesFT3267.tpp).
+
+Touch works!
+
+```py
+def point():
+     raw = i2c.readfrom_mem(0x38, 0x03, 4)
+     x = ((raw[0] & 0x0f) << 8) + raw[1]
+     y = ((raw[2] & 0x0f) << 8) + raw[3]
+     return x, y
+```
+
+Call `point()` after you touch the screen. Or wire it in to be printed when the
+touch sensor triggers an IRQ:
+
+```py
+Pin.board.TP_INT.init(Pin.IN)
+Pin.board.TP_INT.irq(lambda p: print(point()))
+```
 
 ## Display (GC9A01)
 
@@ -93,17 +107,55 @@ file):
 ```
 
 ```py
->>> import gc9a01py as gc9a01
->>> from machine import SPI, Pin
->>> # Initialise as OUT pins
->>> for p in [Pin.board.LCD_BL, Pin.board.LCD_RESET, Pin.board.LCD_RS, Pin.board.LCD_CS]
->>>     p.init(Pin.OUT)
->>> spi = SPI(1, baudrate=60_000_000)
->>> tft = gc9a01.GC9A01(spi, dc=Pin.board.LCD_RS, cs=Pin.board.LCD_CS, reset=Pin.board.LCD_RESET, backlight=Pin.board.LCD_BL, rotation=0)
->>> tft.fill(gc9a01.BLACK)
+import gc9a01py as gc9a01
+from machine import SPI, Pin
+# Initialise as OUT pins
+for p in [Pin.board.LCD_BL, Pin.board.LCD_RESET, Pin.board.LCD_RS, Pin.board.LCD_CS]:
+    p.init(Pin.OUT)
+spi = SPI(1, baudrate=60_000_000)
+tft = gc9a01.GC9A01(spi, dc=Pin.board.LCD_RS, cs=Pin.board.LCD_CS, reset=Pin.board.LCD_RESET, backlight=Pin.board.LCD_BL, rotation=0)
+tft.fill(gc9a01.BLACK)
 ```
 
 Unsurprisingly, it turns out to be *much* faster with hardware accelerated SPI!
+
+## Examples
+
+### Touch drawing
+
+Putting the snippets from above...
+
+```py
+import gc9a01py as gc9a01
+from machine import SPI, Pin, I2C
+
+i2c = I2C(1)
+
+# Toggle LCD RESET to activate touch driver
+Pin.board.LCD_RESET.init(Pin.OUT, value=0)
+Pin.board.LCD_RESET.on()
+
+# Initialise display
+spi = SPI(1, baudrate=60_000_000)
+for p in [Pin.board.LCD_BL, Pin.board.LCD_RESET, Pin.board.LCD_RS, Pin.board.LCD_CS]:
+    p.init(Pin.OUT)
+tft = gc9a01.GC9A01(spi, dc=Pin.board.LCD_RS, cs=Pin.board.LCD_CS, reset=Pin.board.LCD_RESET, backlight=Pin.board.LCD_BL, rotation=0)
+
+# Clear display
+tft.fill(gc9a01.BLACK)
+
+# Read the current touch point
+def point():
+    raw = i2c.readfrom_mem(0x38, 0x03, 4)
+    x = ((raw[0] & 0x0f) << 8) + raw[1]
+    y = ((raw[2] & 0x0f) << 8) + raw[3]
+    return x, y
+
+# Draw a pixel whenever the touch interrupt is raised - at the point where it's touched
+Pin.board.TP_INT.init(Pin.IN)
+Pin.board.TP_INT.irq(lambda p: tft.pixel(*point(), gc9a01.WHITE))
+```
+
 
 ## Todo
 
@@ -114,7 +166,7 @@ Unsurprisingly, it turns out to be *much* faster with hardware accelerated SPI!
   - [x] Buzzer: G3
 - [x] Display driver
   - [x] GC9A01 SPI
-- [ ] Touch driver
+- [x] Touch driver
 - [x] RTC driver
   - [x] RTC8563
   - [x] I2C1
