@@ -1,0 +1,22 @@
+{
+    "deploy": [
+        "deploy.md"
+    ],
+    "docs": "",
+    "features": [
+        "BLE",
+        "Battery Charging",
+        "Display",
+        "Dual-core",
+        "JST-SH",
+        "USB-C",
+        "WiFi"
+    ],
+    "images": [
+        "m5stack_din_meter.jpg"
+    ],
+    "mcu": "esp32s3",
+    "product": "DIN Meter",
+    "url": "https://shop.m5stack.com/products/m5stack-din-meter-w-m5stamps3",
+    "vendor": "M5Stack"
+}
