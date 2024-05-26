@@ -154,6 +154,10 @@ def point():
 # Draw a pixel whenever the touch interrupt is raised - at the point where it's touched
 Pin.board.TP_INT.init(Pin.IN)
 Pin.board.TP_INT.irq(lambda p: tft.pixel(*point(), gc9a01.WHITE))
+
+# Clear the display when the ring button is pressed
+Pin.board.WAKE.init(Pin.IN)
+Pin.board.WAKE.irq(handler = lambda x: tft.fill(gc9a01.BLACK), trigger=Pin.IRQ_FALLING)
 ```
 
 
