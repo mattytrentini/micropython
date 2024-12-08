@@ -39,11 +39,11 @@ typedef struct _mp_obj_bound_meth_t {
 static void bound_meth_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     (void)kind;
     mp_obj_bound_meth_t *o = MP_OBJ_TO_PTR(o_in);
-    mp_printf(print, "<bound_method %p ", o);
-    mp_obj_print_helper(print, o->self, PRINT_REPR);
+    mp_printf(print, "<bound method ");
+    mp_printf(print, mp_obj_get_type_str(o->self));
     mp_print_str(print, ".");
-    mp_obj_print_helper(print, o->meth, PRINT_REPR);
-    mp_print_str(print, ">");
+    mp_printf(print, "%q of ", mp_obj_fun_get_name(o->meth)); // TODO(mst): Causes a crash on line 4 of boundmeth1.py
+    mp_obj_print_helper(print, o->self, PRINT_REPR);
 }
 #endif
 
