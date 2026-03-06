@@ -1,0 +1,29 @@
+{
+    "deploy": [
+        "../deploy_flashmode.md",
+        "../deploy_nativeusb.md"
+    ],
+    "deploy_options": {
+        "flash_offset": "0"
+    },
+    "docs": "",
+    "features": [
+        "BLE",
+        "CAN",
+        "Ethernet",
+        "External Flash",
+        "External RAM",
+        "PoE",
+        "RS485",
+        "RGB LED",
+        "WiFi",
+        "microSD"
+    ],
+    "features_non_filterable": [],
+    "images": [],
+    "mcu": "esp32s3",
+    "product": "ESP32-S3-POE-ETH-8DI-8DO",
+    "thumbnail": "",
+    "url": "https://www.waveshare.com/esp32-s3-poe-eth-8di-8do.htm",
+    "vendor": "Waveshare"
+}
