@@ -1,0 +1,117 @@
+name: Validate new board definitions
+
+on:
+  pull_request:
+    paths:
+      - 'ports/*/boards/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-boards:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install uv
+        uv pip install --system jsonschema
+
+    - name: Get changed files
+      id: changed
+      run: |
+        FILES=$(git diff --name-only \
+          ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} \
+          -- 'ports/*/boards/*/')
+        echo "files<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$FILES" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+        if [ -z "$FILES" ]; then
+          echo "has_files=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_files=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Validate new boards
+      if: steps.changed.outputs.has_files == 'true'
+      run: |
+        python tools/validate_board.py \
+          --repo-root . \
+          --base-ref ${{ github.event.pull_request.base.sha }} \
+          --schema tools/board_schema.json \
+          --media-json /tmp/media_warnings.json \
+          ${{ steps.changed.outputs.files }}
+
+    - name: Comment on PR about missing media images
+      if: always() && steps.changed.outputs.has_files == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const mediaPath = '/tmp/media_warnings.json';
+
+          if (!fs.existsSync(mediaPath)) {
+            console.log('No media warnings file found, skipping comment.');
+            return;
+          }
+
+          const warnings = JSON.parse(fs.readFileSync(mediaPath, 'utf8'));
+          if (!warnings || warnings.length === 0) {
+            console.log('No media warnings to report.');
+            return;
+          }
+
+          // Build comment body
+          let body = '## :camera: Missing Board Images\n\n';
+          body += 'The following board image(s) were not found in the ';
+          body += '[micropython-media](https://github.com/micropython/micropython-media) repository.\n\n';
+          body += 'Please submit a corresponding PR to `micropython/micropython-media` ';
+          body += 'adding images to the `board-images/` directory.\n\n';
+
+          for (const warning of warnings) {
+            body += `**${warning.board_json}**:\n`;
+            for (const img of warning.missing_images) {
+              body += `- \`${img}\`\n`;
+            }
+            body += '\n';
+          }
+
+          // Check for existing comment to avoid duplicates
+          const marker = '<!-- board-validate-media-check -->';
+          body = marker + '\n' + body;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existing = comments.find(c => c.body.includes(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body: body,
+            });
+            console.log('Updated existing media comment.');
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+            console.log('Created new media comment.');
+          }
