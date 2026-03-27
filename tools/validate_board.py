@@ -28,7 +28,7 @@ except ImportError:
 CMAKE_PORTS = {"esp32", "rp2"}
 
 MEDIA_BASE_URL = (
-    "https://raw.githubusercontent.com/micropython/micropython-media/master/board-images"
+    "https://raw.githubusercontent.com/micropython/micropython-media/master/boards"
 )
 
 
@@ -279,14 +279,14 @@ def check_url_liveness(board_json_path, data, result):
         result.warning(rel_path, f"URL '{url}' is not reachable: {e}")
 
 
-def check_media_images(board_json_path, data, result, media_warnings):
+def check_media_images(board_json_path, board_name, data, result, media_warnings):
     """Check if board images exist in the micropython-media repository."""
     rel_path = os.path.relpath(board_json_path)
     images = data.get("images", [])
     missing_images = []
 
     for image in images:
-        url = f"{MEDIA_BASE_URL}/{image}"
+        url = f"{MEDIA_BASE_URL}/{board_name}/{image}"
         try:
             req = urllib.request.Request(url, method="HEAD")
             req.add_header("User-Agent", "MicroPython-Board-Validator/1.0")
@@ -392,7 +392,7 @@ def main():
                 check_url_liveness(board_json_path, data, result)
 
                 # 5. Media image check
-                check_media_images(board_json_path, data, result, media_warnings)
+                check_media_images(board_json_path, board_name, data, result, media_warnings)
 
     # Output
     result.emit_github_annotations()
