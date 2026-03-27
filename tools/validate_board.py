@@ -441,7 +441,12 @@ def main():
         for f, m in result.warnings:
             print(f"  {f}: {m}")
 
-    sys.exit(0 if result.ok else 1)
+    if result.errors:
+        sys.exit(1)
+    elif result.warnings:
+        sys.exit(2)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
