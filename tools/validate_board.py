@@ -55,10 +55,8 @@ class ValidationResult:
         for file_path, message in self.warnings:
             print(f"::warning file={file_path}::{message}")
 
-    def write_step_summary(self, boards):
-        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-        if not summary_path:
-            return
+    def format_markdown(self, boards):
+        """Format validation results as markdown."""
         lines = ["## Board Validation Results\n"]
         if not boards:
             lines.append("No new boards detected in this PR.\n")
@@ -76,19 +74,25 @@ class ValidationResult:
                 ]
                 status = ":x:" if board_errors else ":white_check_mark:"
                 lines.append(
-                    f"### {status} {board_name} ({port}) "
-                    f"- {len(board_errors)} error(s), {len(board_warnings)} warning(s)\n"
+                    f"### {status} {board_name} ({port})"
+                    f" — {len(board_errors)} error(s), {len(board_warnings)} warning(s)\n"
                 )
                 if board_errors or board_warnings:
-                    lines.append("| Status | Check | Details |")
-                    lines.append("|--------|-------|---------|")
+                    lines.append("| Status | File | Details |")
+                    lines.append("|--------|------|---------|")
                     for f, m in board_errors:
                         lines.append(f"| :x: Error | `{os.path.basename(f)}` | {m} |")
                     for f, m in board_warnings:
                         lines.append(f"| :warning: Warning | `{os.path.basename(f)}` | {m} |")
                     lines.append("")
+        return "\n".join(lines)
+
+    def write_step_summary(self, boards):
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if not summary_path:
+            return
         with open(summary_path, "a") as f:
-            f.write("\n".join(lines))
+            f.write(self.format_markdown(boards))
 
 
 def collect_existing_values(repo_root):
@@ -340,6 +344,11 @@ def main():
         help="Path to write full validation results JSON for PR commenting.",
     )
     parser.add_argument(
+        "--comment-md",
+        default=None,
+        help="Path to write formatted markdown for PR comment.",
+    )
+    parser.add_argument(
         "changed_files",
         nargs="*",
         help="List of files changed in the PR.",
@@ -414,6 +423,11 @@ def main():
         }
         with open(args.results_json, "w") as f:
             json.dump(results_data, f, indent=2)
+
+    # Write formatted markdown for PR comment
+    if args.comment_md and (result.errors or result.warnings):
+        with open(args.comment_md, "w") as f:
+            f.write(result.format_markdown(new_boards))
 
     # Summary
     print(f"\n{'='*60}")
