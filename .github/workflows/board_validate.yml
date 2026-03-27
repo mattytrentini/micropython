@@ -48,7 +48,6 @@ jobs:
           --repo-root . \
           --base-ref ${{ github.event.pull_request.base.sha }} \
           --schema tools/board_schema.json \
-          --media-json /tmp/media_warnings.json \
           --results-json /tmp/validation_results.json \
           ${{ steps.changed.outputs.files }}
 
@@ -59,7 +58,6 @@ jobs:
         script: |
           const fs = require('fs');
           const resultsPath = '/tmp/validation_results.json';
-          const mediaPath = '/tmp/media_warnings.json';
 
           if (!fs.existsSync(resultsPath)) {
             console.log('No validation results file found, skipping comment.');
@@ -69,12 +67,7 @@ jobs:
           const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
           const hasErrors = results.errors.length > 0;
           const hasWarnings = results.warnings.length > 0;
-          const hasMedia = fs.existsSync(mediaPath);
-          const mediaWarnings = hasMedia
-            ? JSON.parse(fs.readFileSync(mediaPath, 'utf8'))
-            : [];
-
-          if (!hasErrors && !hasWarnings && mediaWarnings.length === 0) {
+          if (!hasErrors && !hasWarnings) {
             console.log('No issues to report.');
             return;
           }
@@ -107,21 +100,6 @@ jobs:
               }
               body += '\n\n';
             }
-          }
-
-          // Media images section
-          if (mediaWarnings.length > 0) {
-            body += '### :camera: Missing Board Images\n\n';
-            body += 'The following image(s) were not found in the ';
-            body += '[micropython-media](https://github.com/micropython/micropython-media) repository. ';
-            body += 'Please submit a corresponding PR to `micropython/micropython-media` ';
-            body += 'adding images to the `board-images/` directory.\n\n';
-            for (const warning of mediaWarnings) {
-              for (const img of warning.missing_images) {
-                body += `- \`${img}\`\n`;
-              }
-            }
-            body += '\n';
           }
 
           // Check for existing comment to avoid duplicates
