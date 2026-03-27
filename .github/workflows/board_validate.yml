@@ -49,44 +49,83 @@ jobs:
           --base-ref ${{ github.event.pull_request.base.sha }} \
           --schema tools/board_schema.json \
           --media-json /tmp/media_warnings.json \
+          --results-json /tmp/validation_results.json \
           ${{ steps.changed.outputs.files }}
 
-    - name: Comment on PR about missing media images
+    - name: Comment on PR with validation results
       if: always() && steps.changed.outputs.has_files == 'true'
       uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');
+          const resultsPath = '/tmp/validation_results.json';
           const mediaPath = '/tmp/media_warnings.json';
 
-          if (!fs.existsSync(mediaPath)) {
-            console.log('No media warnings file found, skipping comment.');
+          if (!fs.existsSync(resultsPath)) {
+            console.log('No validation results file found, skipping comment.');
             return;
           }
 
-          const warnings = JSON.parse(fs.readFileSync(mediaPath, 'utf8'));
-          if (!warnings || warnings.length === 0) {
-            console.log('No media warnings to report.');
+          const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+          const hasErrors = results.errors.length > 0;
+          const hasWarnings = results.warnings.length > 0;
+          const hasMedia = fs.existsSync(mediaPath);
+          const mediaWarnings = hasMedia
+            ? JSON.parse(fs.readFileSync(mediaPath, 'utf8'))
+            : [];
+
+          if (!hasErrors && !hasWarnings && mediaWarnings.length === 0) {
+            console.log('No issues to report.');
             return;
           }
 
           // Build comment body
-          let body = '## :camera: Missing Board Images\n\n';
-          body += 'The following board image(s) were not found in the ';
-          body += '[micropython-media](https://github.com/micropython/micropython-media) repository.\n\n';
-          body += 'Please submit a corresponding PR to `micropython/micropython-media` ';
-          body += 'adding images to the `board-images/` directory.\n\n';
+          let body = '## Board Validation Results\n\n';
 
-          for (const warning of warnings) {
-            body += `**${warning.board_json}**:\n`;
-            for (const img of warning.missing_images) {
-              body += `- \`${img}\`\n`;
+          for (const board of results.boards) {
+            const boardErrors = results.errors.filter(
+              e => e.file.includes(`boards/${board.board_name}/`) || e.file.endsWith(board.board_name)
+            );
+            const boardWarnings = results.warnings.filter(
+              w => w.file.includes(`boards/${board.board_name}/`) || w.file.endsWith(board.board_name)
+            );
+
+            const status = boardErrors.length > 0 ? ':x:' : ':white_check_mark:';
+            body += `### ${status} ${board.board_name} (${board.port})`;
+            body += ` — ${boardErrors.length} error(s), ${boardWarnings.length} warning(s)\n\n`;
+
+            if (boardErrors.length > 0 || boardWarnings.length > 0) {
+              body += '| Status | File | Details |\n';
+              body += '|--------|------|---------|';
+              for (const e of boardErrors) {
+                const file = e.file.split('/').pop();
+                body += `\n| :x: Error | \`${file}\` | ${e.message} |`;
+              }
+              for (const w of boardWarnings) {
+                const file = w.file.split('/').pop();
+                body += `\n| :warning: Warning | \`${file}\` | ${w.message} |`;
+              }
+              body += '\n\n';
+            }
+          }
+
+          // Media images section
+          if (mediaWarnings.length > 0) {
+            body += '### :camera: Missing Board Images\n\n';
+            body += 'The following image(s) were not found in the ';
+            body += '[micropython-media](https://github.com/micropython/micropython-media) repository. ';
+            body += 'Please submit a corresponding PR to `micropython/micropython-media` ';
+            body += 'adding images to the `board-images/` directory.\n\n';
+            for (const warning of mediaWarnings) {
+              for (const img of warning.missing_images) {
+                body += `- \`${img}\`\n`;
+              }
             }
             body += '\n';
           }
 
           // Check for existing comment to avoid duplicates
-          const marker = '<!-- board-validate-media-check -->';
+          const marker = '<!-- board-validate-results -->';
           body = marker + '\n' + body;
 
           const { data: comments } = await github.rest.issues.listComments({
@@ -103,7 +142,7 @@ jobs:
               comment_id: existing.id,
               body: body,
             });
-            console.log('Updated existing media comment.');
+            console.log('Updated existing validation comment.');
           } else {
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -111,5 +150,5 @@ jobs:
               issue_number: context.issue.number,
               body: body,
             });
-            console.log('Created new media comment.');
+            console.log('Created new validation comment.');
           }

@@ -335,6 +335,11 @@ def main():
         help="Path to write media warnings JSON for PR commenting.",
     )
     parser.add_argument(
+        "--results-json",
+        default=None,
+        help="Path to write full validation results JSON for PR commenting.",
+    )
+    parser.add_argument(
         "changed_files",
         nargs="*",
         help="List of files changed in the PR.",
@@ -397,6 +402,18 @@ def main():
     if args.media_json and media_warnings:
         with open(args.media_json, "w") as f:
             json.dump(media_warnings, f, indent=2)
+
+    # Write full validation results JSON for PR comment step
+    if args.results_json:
+        results_data = {
+            "boards": [
+                {"port": port, "board_name": name} for port, name, _ in new_boards
+            ],
+            "errors": [{"file": f, "message": m} for f, m in result.errors],
+            "warnings": [{"file": f, "message": m} for f, m in result.warnings],
+        }
+        with open(args.results_json, "w") as f:
+            json.dump(results_data, f, indent=2)
 
     # Summary
     print(f"\n{'='*60}")
