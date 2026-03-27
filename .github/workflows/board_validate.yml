@@ -51,85 +51,104 @@ jobs:
           --results-json /tmp/validation_results.json \
           ${{ steps.changed.outputs.files }}
 
+    - name: Write validation summary
+      if: always() && steps.changed.outputs.has_files == 'true'
+      run: |
+        if [ -f /tmp/validation_results.json ]; then
+          python3 -c "
+import json, sys
+
+with open('/tmp/validation_results.json') as f:
+    results = json.load(f)
+
+errors = results['errors']
+warnings = results['warnings']
+
+if not errors and not warnings:
+    sys.exit(0)
+
+lines = ['## Board Validation Results\n']
+
+for board in results['boards']:
+    name = board['board_name']
+    port = board['port']
+    be = [e for e in errors if f'boards/{name}/' in e['file'] or e['file'].endswith(name)]
+    bw = [w for w in warnings if f'boards/{name}/' in w['file'] or w['file'].endswith(name)]
+    status = ':x:' if be else ':white_check_mark:'
+    lines.append(f'### {status} {name} ({port}) — {len(be)} error(s), {len(bw)} warning(s)\n')
+    if be or bw:
+        lines.append('| Status | File | Details |')
+        lines.append('|--------|------|---------|')
+        for e in be:
+            f = e['file'].split('/')[-1]
+            lines.append(f'| :x: Error | \`{f}\` | {e[\"message\"]} |')
+        for w in bw:
+            f = w['file'].split('/')[-1]
+            lines.append(f'| :warning: Warning | \`{f}\` | {w[\"message\"]} |')
+        lines.append('')
+
+import os
+summary = '\n'.join(lines)
+
+# Write to step summary (visible on the Actions run page and PR checks tab)
+summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+if summary_path:
+    with open(summary_path, 'a') as f:
+        f.write(summary)
+
+# Also write for the PR comment step
+with open('/tmp/validation_comment.md', 'w') as f:
+    f.write(summary)
+"
+        fi
+
     - name: Comment on PR with validation results
       if: always() && steps.changed.outputs.has_files == 'true'
       uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');
-          const resultsPath = '/tmp/validation_results.json';
+          const commentPath = '/tmp/validation_comment.md';
 
-          if (!fs.existsSync(resultsPath)) {
-            console.log('No validation results file found, skipping comment.');
+          if (!fs.existsSync(commentPath)) {
+            console.log('No validation comment to post.');
             return;
           }
 
-          const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-          const hasErrors = results.errors.length > 0;
-          const hasWarnings = results.warnings.length > 0;
-          if (!hasErrors && !hasWarnings) {
+          const content = fs.readFileSync(commentPath, 'utf8').trim();
+          if (!content) {
             console.log('No issues to report.');
             return;
           }
 
-          // Build comment body
-          let body = '## Board Validation Results\n\n';
-
-          for (const board of results.boards) {
-            const boardErrors = results.errors.filter(
-              e => e.file.includes(`boards/${board.board_name}/`) || e.file.endsWith(board.board_name)
-            );
-            const boardWarnings = results.warnings.filter(
-              w => w.file.includes(`boards/${board.board_name}/`) || w.file.endsWith(board.board_name)
-            );
-
-            const status = boardErrors.length > 0 ? ':x:' : ':white_check_mark:';
-            body += `### ${status} ${board.board_name} (${board.port})`;
-            body += ` — ${boardErrors.length} error(s), ${boardWarnings.length} warning(s)\n\n`;
-
-            if (boardErrors.length > 0 || boardWarnings.length > 0) {
-              body += '| Status | File | Details |\n';
-              body += '|--------|------|---------|';
-              for (const e of boardErrors) {
-                const file = e.file.split('/').pop();
-                body += `\n| :x: Error | \`${file}\` | ${e.message} |`;
-              }
-              for (const w of boardWarnings) {
-                const file = w.file.split('/').pop();
-                body += `\n| :warning: Warning | \`${file}\` | ${w.message} |`;
-              }
-              body += '\n\n';
-            }
-          }
-
-          // Check for existing comment to avoid duplicates
           const marker = '<!-- board-validate-results -->';
-          body = marker + '\n' + body;
+          const body = marker + '\n' + content;
 
           const prNumber = context.payload.pull_request.number;
-          console.log(`Posting comment to PR #${prNumber}`);
 
+          // Delete any previous validation comment that may have been
+          // overwritten by other bots (e.g. code size), then create fresh.
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: prNumber,
           });
 
-          const existing = comments.find(c => c.body.includes(marker));
-          if (existing) {
-            const response = await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: existing.id,
-              body: body,
-            });
-            console.log(`Updated existing validation comment (id: ${response.data.id})`);
-          } else {
-            const response = await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: body,
-            });
-            console.log(`Created validation comment (id: ${response.data.id}, url: ${response.data.html_url})`);
+          for (const c of comments) {
+            if (c.body.includes(marker)) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: c.id,
+              });
+              console.log(`Deleted old validation comment (id: ${c.id})`);
+            }
           }
+
+          const response = await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: body,
+          });
+          console.log(`Created validation comment (id: ${response.data.id}, url: ${response.data.html_url})`);
