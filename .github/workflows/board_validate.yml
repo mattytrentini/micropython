@@ -106,27 +106,30 @@ jobs:
           const marker = '<!-- board-validate-results -->';
           body = marker + '\n' + body;
 
+          const prNumber = context.payload.pull_request.number;
+          console.log(`Posting comment to PR #${prNumber}`);
+
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            issue_number: context.issue.number,
+            issue_number: prNumber,
           });
 
           const existing = comments.find(c => c.body.includes(marker));
           if (existing) {
-            await github.rest.issues.updateComment({
+            const response = await github.rest.issues.updateComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: existing.id,
               body: body,
             });
-            console.log('Updated existing validation comment.');
+            console.log(`Updated existing validation comment (id: ${response.data.id})`);
           } else {
-            await github.rest.issues.createComment({
+            const response = await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: prNumber,
               body: body,
             });
-            console.log('Created new validation comment.');
+            console.log(`Created validation comment (id: ${response.data.id}, url: ${response.data.html_url})`);
           }
