@@ -272,7 +272,7 @@ def check_url_liveness(board_json_path, data, result):
         req.add_header("User-Agent", "MicroPython-Board-Validator/1.0")
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status >= 400:
-                result.warning(
+                result.notice(
                     rel_path,
                     f"URL '{url}' returned HTTP {resp.status}.",
                 )
@@ -284,16 +284,16 @@ def check_url_liveness(board_json_path, data, result):
                 req.add_header("User-Agent", "MicroPython-Board-Validator/1.0")
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     if resp.status >= 400:
-                        result.warning(
+                        result.notice(
                             rel_path,
                             f"URL '{url}' returned HTTP {resp.status}.",
                         )
             except Exception as e2:
-                result.warning(rel_path, f"URL '{url}' is not reachable: {e2}")
+                result.notice(rel_path, f"URL '{url}' is not reachable: {e2}")
         else:
-            result.warning(rel_path, f"URL '{url}' returned HTTP {e.code}.")
+            result.notice(rel_path, f"URL '{url}' returned HTTP {e.code}.")
     except Exception as e:
-        result.warning(rel_path, f"URL '{url}' is not reachable: {e}")
+        result.notice(rel_path, f"URL '{url}' is not reachable: {e}")
 
 
 def check_media_images(board_json_path, board_name, data, result, media_warnings):
