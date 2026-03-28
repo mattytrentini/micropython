@@ -38,6 +38,7 @@ class ValidationResult:
     def __init__(self):
         self.errors = []
         self.warnings = []
+        self.notices = []
 
     def error(self, file_path, message):
         self.errors.append((file_path, message))
@@ -45,15 +46,16 @@ class ValidationResult:
     def warning(self, file_path, message):
         self.warnings.append((file_path, message))
 
-    @property
-    def ok(self):
-        return not self.errors
+    def notice(self, file_path, message):
+        self.notices.append((file_path, message))
 
     def emit_github_annotations(self):
         for file_path, message in self.errors:
             print(f"::error file={file_path}::{message}")
         for file_path, message in self.warnings:
             print(f"::warning file={file_path}::{message}")
+        for file_path, message in self.notices:
+            print(f"::notice file={file_path}::{message}")
 
     def format_markdown(self, boards):
         """Format validation results as markdown."""
@@ -72,18 +74,29 @@ class ValidationResult:
                     for f, m in self.warnings
                     if f"boards/{board_name}/" in f or f.endswith(board_name)
                 ]
-                status = ":x:" if board_errors else ":white_check_mark:"
+                board_notices = [
+                    (f, m)
+                    for f, m in self.notices
+                    if f"boards/{board_name}/" in f or f.endswith(board_name)
+                ]
+                status = ":x:" if board_errors or board_warnings else ":white_check_mark:"
                 lines.append(
                     f"### {status} {board_name} ({port})"
-                    f" — {len(board_errors)} error(s), {len(board_warnings)} warning(s)\n"
+                    f" — {len(board_errors)} error(s),"
+                    f" {len(board_warnings)} warning(s),"
+                    f" {len(board_notices)} notice(s)\n"
                 )
-                if board_errors or board_warnings:
+                if board_errors or board_warnings or board_notices:
                     lines.append("| Status | File | Details |")
                     lines.append("|--------|------|---------|")
                     for f, m in board_errors:
                         lines.append(f"| :x: Error | `{os.path.basename(f)}` | {m} |")
                     for f, m in board_warnings:
                         lines.append(f"| :warning: Warning | `{os.path.basename(f)}` | {m} |")
+                    for f, m in board_notices:
+                        lines.append(
+                            f"| :information_source: Notice | `{os.path.basename(f)}` | {m} |"
+                        )
                     lines.append("")
         return "\n".join(lines)
 
@@ -302,7 +315,7 @@ def check_media_images(board_json_path, board_name, data, result, media_warnings
 
     if missing_images:
         images_str = ", ".join(missing_images)
-        result.warning(
+        result.notice(
             rel_path,
             f"Image(s) not found in micropython-media repository: {images_str}. "
             "Please submit a corresponding PR to "
@@ -424,14 +437,17 @@ def main():
         with open(args.results_json, "w") as f:
             json.dump(results_data, f, indent=2)
 
-    # Write formatted markdown for PR comment
-    if args.comment_md and (result.errors or result.warnings):
+    # Write formatted markdown for step summary
+    if args.comment_md and (result.errors or result.warnings or result.notices):
         with open(args.comment_md, "w") as f:
             f.write(result.format_markdown(new_boards))
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Errors: {len(result.errors)}, Warnings: {len(result.warnings)}")
+    print(
+        f"Errors: {len(result.errors)}, Warnings: {len(result.warnings)}, "
+        f"Notices: {len(result.notices)}"
+    )
     if result.errors:
         print("\nErrors (must fix):")
         for f, m in result.errors:
@@ -439,6 +455,10 @@ def main():
     if result.warnings:
         print("\nWarnings (should fix):")
         for f, m in result.warnings:
+            print(f"  {f}: {m}")
+    if result.notices:
+        print("\nNotices (informational):")
+        for f, m in result.notices:
             print(f"  {f}: {m}")
 
     if result.errors:
