@@ -1,0 +1,17 @@
+{
+    "deploy": [
+        "../deploy.md"
+    ],
+    "docs": "https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html",
+    "features": [
+        "USB-C"
+    ],
+    "images": [
+        "rp2-pico.jpg"
+    ],
+    "mcu": "rp2350",
+    "product": "Test Clean Board",
+    "thumbnail": "rp2-pico.jpg",
+    "url": "https://www.raspberrypi.com/products/raspberry-pi-pico/",
+    "vendor": "Raspberry Pi"
+}
