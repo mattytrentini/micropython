@@ -433,6 +433,7 @@ def main():
             ],
             "errors": [{"file": f, "message": m} for f, m in result.errors],
             "warnings": [{"file": f, "message": m} for f, m in result.warnings],
+            "notices": [{"file": f, "message": m} for f, m in result.notices],
         }
         with open(args.results_json, "w") as f:
             json.dump(results_data, f, indent=2)
