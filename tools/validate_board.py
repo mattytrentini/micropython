@@ -249,15 +249,13 @@ def check_board_json_content(board_json_path, data, existing_values, result):
         )
 
     # Empty fields that should have content
-    if data.get("thumbnail") == "":
-        result.warning(rel_path, "thumbnail is empty. Consider removing it or adding an image.")
     if data.get("url") == "":
         result.warning(
             rel_path,
             "url is empty. A product or vendor URL should be provided.",
         )
     if data.get("docs") == "":
-        result.warning(rel_path, "docs is empty. Consider removing it or adding a docs URL.")
+        result.warning(rel_path, "docs is empty. Consider adding a docs URL.")
 
 
 def check_url_liveness(board_json_path, data, result):
