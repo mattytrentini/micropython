@@ -1,0 +1,19 @@
+{
+    "deploy": [
+        "../deploy.md"
+    ],
+    "docs": "",
+    "features": [
+        "WiFi",
+        "BLE",
+        "USB-C"
+    ],
+    "images": [
+        "test_validate_board.jpg"
+    ],
+    "mcu": "rp2350",
+    "product": "Acme Corp Test Board",
+    "thumbnail": "",
+    "url": "https://micropython.org",
+    "vendor": "Acme Corp"
+}
