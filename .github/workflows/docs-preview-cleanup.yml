@@ -1,0 +1,40 @@
+name: Cleanup docs preview
+
+# Removes a PR's published preview when the PR is closed or merged. This uses
+# pull_request_target (base-repository context) for write access, but it never
+# checks out or runs PR code: it only deletes the preview directory from the
+# gh-pages branch, so it is not exposed to untrusted input.
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    paths:
+      - docs/**
+      - py/**
+      - tests/cpydiff/**
+
+# Share the deploy workflow's lane so a close cannot race a final deploy.
+concurrency:
+  group: gh-pages-deploy
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout gh-pages
+      uses: actions/checkout@v6
+      with:
+        ref: gh-pages
+    - name: Remove preview directory
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        rm -rf "pr-${{ github.event.number }}"
+        git add -A
+        git diff --cached --quiet || \
+          git commit -m "Remove docs preview for PR #${{ github.event.number }}"
+        git push
