@@ -1,6 +1,8 @@
 MicroPython documentation and references
 ========================================
 
+.. Test of the docs PR preview deployment (separate repo). Safe to remove.
+
 .. toctree::
 
     library/index.rst
