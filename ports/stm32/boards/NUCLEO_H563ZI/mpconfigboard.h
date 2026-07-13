@@ -89,3 +89,19 @@
 #define MICROPY_HW_ETH_RMII_TX_EN   (pin_G11)
 #define MICROPY_HW_ETH_RMII_TXD0    (pin_G13)
 #define MICROPY_HW_ETH_RMII_TXD1    (pin_B15)
+
+// machine.QuadSPI / machine.OctoSPI on OCTOSPI1. Not connected to any
+// existing flash/PSRAM on this board -- pins are free-standing and intended
+// to be wired to an external quad/octal device for testing.
+#define MICROPY_PY_MACHINE_QUADSPI  (1)
+#define MICROPY_PY_MACHINE_OCTOSPI  (1)
+#define MICROPY_HW_OCTOSPI1_NCS     (pin_B10)
+#define MICROPY_HW_OCTOSPI1_SCK     (pin_A3)
+#define MICROPY_HW_OCTOSPI1_IO0     (pin_B1)
+#define MICROPY_HW_OCTOSPI1_IO1     (pin_C10)
+#define MICROPY_HW_OCTOSPI1_IO2     (pin_E2)
+#define MICROPY_HW_OCTOSPI1_IO3     (pin_A6)
+#define MICROPY_HW_OCTOSPI1_IO4     (pin_D4)
+#define MICROPY_HW_OCTOSPI1_IO5     (pin_C6)
+#define MICROPY_HW_OCTOSPI1_IO6     (pin_D6)
+#define MICROPY_HW_OCTOSPI1_IO7     (pin_C0)

@@ -284,6 +284,7 @@ SRC_C += \
 	machine_bitstream.c \
 	machine_i2c.c \
 	machine_spi.c \
+	machine_quadspi.c \
 	modpyb.c \
 	modstm.c \
 	network_lan.c \

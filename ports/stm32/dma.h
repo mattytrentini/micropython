@@ -36,6 +36,13 @@ typedef struct _dma_descr_t dma_descr_t;
 #define DMA_CIRCULAR 0x20000000
 #endif
 
+#if defined(STM32H5)
+// Used by machine_quadspi.c for DMA-driven machine.QuadSPI/machine.OctoSPI
+// transfers. OCTOSPI1 has a single combined DMA request line (unlike SPI's
+// separate RX/TX requests), reused for both transfer directions.
+extern const dma_descr_t dma_OCTOSPI_1;
+#endif
+
 #if defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32G0) || defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
 
 extern const dma_descr_t dma_I2C_1_RX;

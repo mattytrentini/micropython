@@ -743,6 +743,9 @@ const dma_descr_t dma_SPI_4_TX = { GPDMA1_Channel7, GPDMA1_REQUEST_SPI4_TX, dma_
 const dma_descr_t dma_DAC_1_TX = { GPDMA2_Channel0, GPDMA1_REQUEST_DAC1_CH1, dma_id_8, &dma_init_struct_dac };
 const dma_descr_t dma_DAC_2_TX = { GPDMA2_Channel1, GPDMA1_REQUEST_DAC1_CH2, dma_id_9, &dma_init_struct_dac };
 #endif
+// OCTOSPI1 has a single combined DMA request line (used for both transfer
+// directions), unlike SPI's separate RX/TX requests.
+const dma_descr_t dma_OCTOSPI_1 = { GPDMA2_Channel2, GPDMA2_REQUEST_OCTOSPI1, dma_id_10, &dma_init_struct_spi_i2c };
 
 static const uint8_t dma_irqn[NSTREAM] = {
     GPDMA1_Channel0_IRQn,
