@@ -141,6 +141,7 @@ list(APPEND MICROPY_SOURCE_PORT
     esp32_ldo.c
     modesp32.c
     machine_hw_spi.c
+    machine_hw_quadspi.c
     mpthreadport.c
     machine_rtc.c
     machine_sdcard.c

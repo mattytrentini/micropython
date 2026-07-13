@@ -149,6 +149,10 @@
 #define MICROPY_PY_MACHINE_SOFTI2C          (1)
 #define MICROPY_PY_MACHINE_SPI              (1)
 #define MICROPY_PY_MACHINE_SOFTSPI          (1)
+#define MICROPY_PY_MACHINE_QUADSPI          (1)
+#ifndef MICROPY_PY_MACHINE_OCTOSPI
+#define MICROPY_PY_MACHINE_OCTOSPI          (SOC_SPI_SUPPORT_OCT)
+#endif
 #ifndef MICROPY_PY_MACHINE_DAC
 #define MICROPY_PY_MACHINE_DAC              (SOC_DAC_SUPPORTED)
 #endif
