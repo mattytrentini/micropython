@@ -257,6 +257,7 @@ SRC_C += \
 	machine_pin.c \
 	machine_encoder.c \
 	machine_rtc.c \
+	machine_qspi.c \
 	machine_sdcard.c \
 	machine_spi.c \
 	main.c \

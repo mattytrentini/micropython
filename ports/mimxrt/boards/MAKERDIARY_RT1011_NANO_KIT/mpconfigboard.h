@@ -13,6 +13,20 @@
 #define MICROPY_HW_NUM_PIN_IRQS (2 * 32)
 #define MICROPY_PY_MACHINE_SDCARD    (0)
 
+// machine.QuadSPI on FlexSPI Port B (Port A is the boot/XIP flash and can't
+// be repurposed for general-purpose I/O). Note this shares pins with I2S3
+// (GPIO_SD_00/01/02, see I2S_GPIO_MAP below) and the board LED
+// (GPIO_SD_04) -- QuadSPI and those features can't be used at the same time.
+#define MICROPY_PY_MACHINE_QUADSPI (1)
+
+#define IOMUX_TABLE_QSPI \
+    { IOMUXC_GPIO_SD_13_FLEXSPI_B_SCLK }, \
+    { IOMUXC_GPIO_SD_00_FLEXSPI_B_SS0_B }, \
+    { IOMUXC_GPIO_SD_03_FLEXSPI_B_DATA00 }, \
+    { IOMUXC_GPIO_SD_01_FLEXSPI_B_DATA01 }, \
+    { IOMUXC_GPIO_SD_02_FLEXSPI_B_DATA02 }, \
+    { IOMUXC_GPIO_SD_04_FLEXSPI_B_DATA03 }
+
 
 #define MICROPY_HW_UART_NUM     (sizeof(uart_index_table) / sizeof(uart_index_table)[0])
 #define MICROPY_HW_UART_INDEX   { 0, 1, 2, 3, 4 }
