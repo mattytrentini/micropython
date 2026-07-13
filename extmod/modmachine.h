@@ -198,6 +198,20 @@ typedef struct _mp_machine_soft_spi_obj_t {
 
 #endif
 
+#if MICROPY_PY_MACHINE_QUADSPI || MICROPY_PY_MACHINE_OCTOSPI
+
+// Half-duplex multi-line (quad/octal) SPI protocol, shared by machine.QuadSPI
+// and machine.OctoSPI. Unlike mp_machine_spi_p_t, write and read are separate
+// operations because the data lines are shared/bidirectional (half-duplex).
+typedef struct _mp_machine_quadspi_p_t {
+    void (*init)(mp_obj_base_t *obj, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
+    void (*deinit)(mp_obj_base_t *obj); // can be NULL
+    void (*write)(mp_obj_base_t *obj, size_t len, const uint8_t *src);
+    void (*read)(mp_obj_base_t *obj, size_t len, uint8_t *dest);
+} mp_machine_quadspi_p_t;
+
+#endif
+
 // Objects for machine.mem8, machine.mem16 and machine.mem32.
 extern const machine_mem_obj_t machine_mem8_obj;
 extern const machine_mem_obj_t machine_mem16_obj;
@@ -219,6 +233,12 @@ extern const mp_obj_type_t machine_pwm_type;
 extern const mp_obj_type_t machine_rtc_type;
 extern const mp_obj_type_t machine_signal_type;
 extern const mp_obj_type_t machine_spi_type;
+#if MICROPY_PY_MACHINE_QUADSPI
+extern const mp_obj_type_t machine_quadspi_type;
+#endif
+#if MICROPY_PY_MACHINE_OCTOSPI
+extern const mp_obj_type_t machine_octospi_type;
+#endif
 extern const mp_obj_type_t machine_timer_type;
 extern const mp_obj_type_t machine_uart_type;
 extern const mp_obj_type_t machine_usbd_type;
@@ -241,6 +261,10 @@ extern const mp_machine_spi_p_t mp_machine_soft_spi_p;
 #endif
 #if MICROPY_PY_MACHINE_SPI || MICROPY_PY_MACHINE_SOFTSPI
 extern const mp_obj_dict_t mp_machine_spi_locals_dict;
+#endif
+
+#if MICROPY_PY_MACHINE_QUADSPI || MICROPY_PY_MACHINE_OCTOSPI
+extern const mp_obj_dict_t mp_machine_quadspi_locals_dict;
 #endif
 
 #if MICROPY_HW_ENABLE_USB_RUNTIME_DEVICE

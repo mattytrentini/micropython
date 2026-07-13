@@ -2123,6 +2123,16 @@ typedef time_t mp_timestamp_t;
 #define MICROPY_PY_MACHINE_SPI_LSB (1)
 #endif
 
+// Whether to provide the "machine.QuadSPI" class
+#ifndef MICROPY_PY_MACHINE_QUADSPI
+#define MICROPY_PY_MACHINE_QUADSPI (0)
+#endif
+
+// Whether to provide the "machine.OctoSPI" class
+#ifndef MICROPY_PY_MACHINE_OCTOSPI
+#define MICROPY_PY_MACHINE_OCTOSPI (0)
+#endif
+
 // Whether to provide the "machine.Timer" class
 #ifndef MICROPY_PY_MACHINE_TIMER
 #define MICROPY_PY_MACHINE_TIMER (0)
