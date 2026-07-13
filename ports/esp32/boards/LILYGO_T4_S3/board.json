@@ -1,0 +1,23 @@
+{
+    "deploy": [
+        "../deploy_nativeusb.md"
+    ],
+    "deploy_options": {
+        "flash_offset": "0"
+    },
+    "docs": "",
+    "features": [
+        "BLE",
+        "Display",
+        "External Flash",
+        "External RAM",
+        "SDCard",
+        "USB-C",
+        "WiFi"
+    ],
+    "mcu": "esp32s3",
+    "product": "T4-S3",
+    "thumbnail": "",
+    "url": "https://www.lilygo.cc/products/t4-s3",
+    "vendor": "LILYGO"
+}
