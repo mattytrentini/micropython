@@ -48,6 +48,20 @@ SPI instances will be created using:
     for spi_args in spi_standalone_args_list:
         machine.SPI(*spi_args)
 
+### QuadSPI/OctoSPI tests
+
+QuadSPI/OctoSPI tests require one or more instances. They don't require any
+connections, but unlike SPI there are no safe default pins, so each instance's
+pins must be given explicitly. The variables are:
+
+    quadspi_standalone_args_list: list[tuple[tuple, dict]]
+    octospi_standalone_args_list: list[tuple[tuple, dict]]
+
+Instances will be created using:
+
+    for args, kwargs in quadspi_standalone_args_list:
+        machine.QuadSPI(*args, **kwargs)
+
 ### PWM tests
 
 PWM tests require a PWM output to be connected in loopback mode to another GPIO pin

@@ -14,6 +14,14 @@ if "ESP32-C" in sys.implementation._machine:
 else:
     spi_standalone_args_list = [(1,), (2,)]
 
+# QuadSPI has no safe default pins (they usually overlap with the module's own
+# flash/PSRAM), so pins must always be picked explicitly. Verified free/floating
+# on a classic ESP32 devkit; other variants may need different pin choices.
+if "ESP32-C" not in sys.implementation._machine:
+    quadspi_standalone_args_list = [
+        ((1,), {"sck": 18, "io0": 19, "io1": 21, "io2": 22, "io3": 23}),
+    ]
+
 pwm_loopback_pins = [(4, 5)]
 
 encoder_loopback_id = 0

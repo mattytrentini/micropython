@@ -263,6 +263,8 @@ Classes
    machine.PWM.rst
    machine.UART.rst
    machine.SPI.rst
+   machine.QuadSPI.rst
+   machine.OctoSPI.rst
    machine.I2C.rst
    machine.I2CTarget.rst
    machine.I2S.rst

@@ -669,6 +669,38 @@ has the same methods as software SPI above::
     hspi = SPI(1, 10000000, sck=Pin(14), mosi=Pin(13), miso=Pin(12))
     vspi = SPI(2, baudrate=80000000, polarity=0, phase=0, bits=8, firstbit=0, sck=Pin(18), mosi=Pin(23), miso=Pin(19))
 
+Hardware QuadSPI / OctoSPI bus
+------------------------------
+
+:ref:`machine.QuadSPI <machine.QuadSPI>` (4 data lines) is accessed via the
+same two hardware SPI channels as regular SPI above, but unlike SPI there are
+no safe default pins -- the pins commonly used for quad mode on the IO_MUX
+frequently overlap with the module's own flash or PSRAM. All pins must be
+given explicitly::
+
+    from machine import Pin, QuadSPI
+
+    qspi = QuadSPI(1, baudrate=20000000, sck=Pin(18), io0=Pin(19), io1=Pin(21),
+                    io2=Pin(22), io3=Pin(23))
+    qspi.write(b'12345')
+    qspi.read(10)
+
+:ref:`machine.OctoSPI <machine.OctoSPI>` (8 data lines) is only available on
+chips with octal-capable SPI hardware (eg ESP32-S3, ESP32-P4), and only on
+SPI2 (id=1)::
+
+    from machine import Pin, OctoSPI
+
+    ospi = OctoSPI(1, baudrate=20000000, sck=Pin(18),
+                    io0=Pin(19), io1=Pin(21), io2=Pin(22), io3=Pin(23),
+                    io4=Pin(4), io5=Pin(6), io6=Pin(7), io7=Pin(8))
+    ospi.write(b'12345')
+
+See :ref:`machine.QuadSPI <machine.QuadSPI>` for why there's no
+``write_readinto`` method and no fill-byte on ``read``/``readinto`` -- the
+data lines are half-duplex, so writing and reading are always separate
+transactions.
+
 Software I2C bus
 ----------------
 
