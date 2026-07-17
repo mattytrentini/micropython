@@ -196,6 +196,34 @@ These are working configurations for LAN interfaces of some popular ESP32 boards
                       phy_type=network.PHY_IP101, phy_addr=1)
 
 
+Built-in MAC (ESP32-P4)
+""""""""""""""""""""""
+
+The ESP32-P4 also has a built-in Ethernet MAC, but unlike the original ESP32 none
+of its RMII data-line pins are fixed, so they must all be passed explicitly to
+the :class:`network.LAN` constructor as extra keyword arguments:
+
+- ``crs_dv``, ``rxd0``, ``rxd1``, ``tx_en``, ``txd0`` and ``txd1`` -
+  :class:`machine.Pin` objects (or integers) specifying the RMII data pins.
+- ``clk_in`` - :class:`machine.Pin` object (or integer) specifying the pin used
+  for the RMII reference clock, when the PHY generates this clock (the common
+  case for a PHY driven by its own crystal).
+- ``clk_out`` - :class:`machine.Pin` object (or integer) specifying the pin used
+  to output the RMII reference clock from the ESP32-P4, when the ESP32-P4
+  generates this clock instead of the PHY. If ``clk_out`` is given, ``clk_in``
+  must be given as well (see the ESP-IDF documentation for this "clock inverted
+  loopback" mode).
+
+These are working configurations for LAN interfaces of some ESP32-P4 boards::
+
+    # Waveshare ESP32-P4-Nano: onboard IP101 PHY, clocked from its own crystal
+
+    lan = network.LAN(mdc=Pin(31), mdio=Pin(52), reset=Pin(51),
+                      crs_dv=Pin(28), rxd0=Pin(29), rxd1=Pin(30),
+                      tx_en=Pin(49), txd0=Pin(34), txd1=Pin(35), clk_in=Pin(50),
+                      phy_type=network.PHY_IP101, phy_addr=1)
+
+
 .. _esp32_spi_ethernet:
 
 SPI Ethernet Interface
