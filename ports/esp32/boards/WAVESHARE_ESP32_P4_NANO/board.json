@@ -1,0 +1,23 @@
+{
+    "deploy": [
+        "../deploy.md"
+    ],
+    "deploy_options": {
+        "flash_offset": "0x2000"
+    },
+    "docs": "",
+    "features": [
+        "BLE",
+        "External Flash",
+        "External RAM",
+        "WiFi"
+    ],
+    "images": [
+        "waveshare_esp32_p4_nano.jpg"
+    ],
+    "mcu": "esp32p4",
+    "product": "Waveshare ESP32-P4-Nano",
+    "thumbnail": "",
+    "url": "https://www.waveshare.com/esp32-p4-nano.htm",
+    "vendor": "Waveshare"
+}
