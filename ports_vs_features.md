@@ -10,26 +10,26 @@ Port support for `machine` module classes and related features.
 
 ## Feature Matrix
 
-| Feature | ESP32 | ESP8266 | RP2 | STM32 | i.MXRT | nRF | SAMD | Renesas-RA | Alif | Zephyr |
-|---------|:-----:|:-------:|:---:|:-----:|:------:|:---:|:----:|:----------:|:----:|:------:|
-| `Pin` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `UART` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SPI` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `I2C` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `PWM` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `ADC` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `DAC` | ⚠️ [1] | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| `Timer` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `RTC` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `WDT` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| `I2S` | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `I2CTarget` | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| `CAN` | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `USBDevice` | ✅ | ❌ | ✅ | ❌ [2] | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `SDCard` | ✅ | ❌ | ❌ | ⚠️ [3] | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `Counter` | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `Encoder` | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| BLE | ✅ | ❌ | ⚠️ [4] | ⚠️ [5] | ❌ | ⚠️ [6] | ❌ | ❌ | ❌ | ✅ |
+| Feature | ESP32 | ESP8266 | RP2 | STM32 | i.MXRT | nRF | SAMD | Renesas-RA | Alif | Zephyr | PSoC Edge |
+|---------|:-----:|:-------:|:---:|:-----:|:------:|:---:|:----:|:----------:|:----:|:------:|:---------:|
+| `Pin` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `UART` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `SPI` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `I2C` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `PWM` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `ADC` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `DAC` | ⚠️ [1] | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `Timer` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `RTC` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| `WDT` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| `I2S` | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `I2CTarget` | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| `CAN` | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `USBDevice` | ✅ | ❌ | ✅ | ❌ [2] | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `SDCard` | ✅ | ❌ | ❌ | ⚠️ [3] | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `Counter` | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `Encoder` | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| BLE | ✅ | ❌ | ⚠️ [4] | ⚠️ [5] | ❌ | ⚠️ [6] | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ## Notes
 
@@ -39,3 +39,4 @@ Port support for `machine` module classes and related features.
 4. **RP2 BLE**: Available on Pico W (CYW43439) and other boards with a wireless module. Not available on standard Pico.
 5. **STM32 BLE**: Available on STM32WB-series boards only.
 6. **nRF BLE**: The nRF port targets nRF51/nRF52 microcontrollers which include a hardware BLE radio, but `ubluetooth` support requires a Nordic SoftDevice and is board-dependent.
+7. **PSoC Edge**: Early-stage port (Infineon PSoC™ Edge E84). Only Pin, UART, and RTC are implemented so far. SPI/I2C/PWM/ADC etc. are planned via the PSoC SCB peripheral.
