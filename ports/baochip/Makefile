@@ -83,6 +83,7 @@ INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_gpio/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_uart/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_timer/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_reset/include
+INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_i2c/include
 INC += -I$(DABAO_SDK_DIR)/src/boards/include
 
 CFLAGS += $(INC)
@@ -92,6 +93,7 @@ SRC_C = \
     main.c \
     baochip_irq.c \
     machine_pin.c \
+    machine_i2c.c \
     mphalport.c \
 
 # SDK sources compiled directly into the firmware. Listed here per file
@@ -105,6 +107,7 @@ SRC_C = \
 SDK_SRC = $(addprefix $(DABAO_SDK)/, \
     src/bao1x/hardware_uart/uart.c \
     src/bao1x/hardware_gpio/gpio.c \
+    src/bao1x/hardware_i2c/i2c.c \
     src/sevs/sevs_assert_target.c \
     )
 
