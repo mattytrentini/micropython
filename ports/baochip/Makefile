@@ -86,6 +86,7 @@ INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_reset/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_i2c/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_spi/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_rtc/include
+INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_wdt/include
 INC += -I$(DABAO_SDK_DIR)/src/boards/include
 
 CFLAGS += $(INC)
@@ -114,6 +115,7 @@ SDK_SRC = $(addprefix $(DABAO_SDK)/, \
     src/bao1x/hardware_i2c/i2c.c \
     src/bao1x/hardware_spi/spi.c \
     src/bao1x/hardware_rtc/rtc.c \
+    src/bao1x/hardware_wdt/wdt.c \
     src/sevs/sevs_assert_target.c \
     )
 
