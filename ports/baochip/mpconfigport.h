@@ -66,6 +66,7 @@
 #ifndef MICROPY_PY_OS_DUPTERM
 #define MICROPY_PY_OS_DUPTERM       (1)
 #endif
+#define MICROPY_PY_OS_URANDOM       (1)
 #define MICROPY_PY_TIME_TIME_TIME_NS (0)
 
 // All port-side root pointers live alongside the vm-side ones.

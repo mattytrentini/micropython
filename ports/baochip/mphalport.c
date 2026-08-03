@@ -38,6 +38,8 @@
 #include "hardware/regs/addressmap.h"
 #include "hardware/regs/timer.h"
 #include "hardware/regs/udma.h"
+#include "bao/stdlib.h"
+#include "hardware/trng.h"
 #include "hardware/uart.h"
 
 #if MICROPY_HW_ENABLE_USBDEV
@@ -49,6 +51,8 @@
 #if MICROPY_PY_OS_DUPTERM
 #include "extmod/misc.h"
 #endif
+
+#include "py/mperrno.h"
 
 #ifndef MICROPY_HW_STDIN_BUFFER_LEN
 #define MICROPY_HW_STDIN_BUFFER_LEN 256
@@ -311,6 +315,16 @@ mp_uint_t mp_hal_ticks_ms(void) {
     return (mp_uint_t)(ticktimer_read_us() / 1000U);
 }
 
+// bao_stdlib's delay.c also provides millis(), but its own ticktimer_init()
+// reconfigures TICKTIMER_CLOCKS_PER_TICK for 1 ms resolution the first time
+// it's called -- clobbering the 1 us resolution mp_hal_ticktimer_init()
+// already set up.  trng_generate()'s timeout loop calls millis(), so this
+// is our own implementation on top of the ticktimer we already own,
+// instead of linking in delay.c and racing its init against ours.
+uint64_t millis(void) {
+    return ticktimer_read_us() / 1000U;
+}
+
 mp_uint_t mp_hal_ticks_cpu(void) {
     uint32_t cycles;
     __asm__ volatile ("csrr %0, mcycle" : "=r" (cycles));
@@ -338,3 +352,38 @@ void mp_hal_delay_ms(mp_uint_t ms) {
         mp_event_handle_nowait();
     }
 }
+
+#if MICROPY_PY_OS_URANDOM
+
+// trng_generate() has an undocumented (SDK-internal) 256-word ceiling per
+// call; pull from it in small chunks instead so os.urandom() has no
+// hidden length limit of its own.
+#define TRNG_CHUNK_WORDS (8)
+
+void mp_hal_get_random(size_t n, uint8_t *buf) {
+    static bool trng_initialized = false;
+    if (!trng_initialized) {
+        trng_init();
+        trng_initialized = true;
+    }
+
+    uint32_t words[TRNG_CHUNK_WORDS];
+    while (n > 0) {
+        uint32_t word_count = (n + 3) / 4;
+        if (word_count > TRNG_CHUNK_WORDS) {
+            word_count = TRNG_CHUNK_WORDS;
+        }
+        if (trng_generate(words, word_count) != 0) {
+            mp_raise_OSError(MP_ETIMEDOUT);
+        }
+        size_t chunk = word_count * 4;
+        if (chunk > n) {
+            chunk = n;
+        }
+        memcpy(buf, words, chunk);
+        buf += chunk;
+        n -= chunk;
+    }
+}
+
+#endif // MICROPY_PY_OS_URANDOM

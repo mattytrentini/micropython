@@ -148,4 +148,8 @@ static inline void mp_hal_pin_high(mp_hal_pin_obj_t pin) {
 
 mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t obj);
 
+#if MICROPY_PY_OS_URANDOM
+void mp_hal_get_random(size_t n, uint8_t *buf);
+#endif
+
 #endif // MICROPY_INCLUDED_BAOCHIP_MPHALPORT_H
