@@ -57,6 +57,7 @@
 #define MICROPY_PY_MACHINE_I2C                  (1)
 #define MICROPY_PY_MACHINE_I2C_TRANSFER_WRITE1  (1)
 #define MICROPY_PY_MACHINE_SPI                  (1)
+#define MICROPY_PY_MACHINE_RTC                  (1)
 #define MICROPY_PY_SYS_PLATFORM     "baochip"
 #define MICROPY_PY_OS_UNAME         (1)
 #ifndef MICROPY_PY_OS_DUPTERM
