@@ -56,7 +56,9 @@
 #define MICROPY_PY_MACHINE_DISABLE_IRQ_ENABLE_IRQ (1)
 #define MICROPY_PY_MACHINE_I2C                  (1)
 #define MICROPY_PY_MACHINE_I2C_TRANSFER_WRITE1  (1)
+#define MICROPY_PY_MACHINE_SOFTI2C              (1)
 #define MICROPY_PY_MACHINE_SPI                  (1)
+#define MICROPY_PY_MACHINE_SOFTSPI              (1)
 #define MICROPY_PY_MACHINE_RTC                  (1)
 #define MICROPY_PY_MACHINE_WDT                  (1)
 #define MICROPY_PY_MACHINE_WDT_INCLUDEFILE      "ports/baochip/machine_wdt.c"

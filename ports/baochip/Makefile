@@ -140,6 +140,7 @@ SRC_C += \
     shared/runtime/sys_stdio_mphal.c \
     shared/readline/readline.c \
     shared/timeutils/timeutils.c \
+    drivers/bus/softspi.c \
 
 # Native USB-CDC support (Phase 2).  Build inputs are gated entirely
 # on this make variable, so MICROPY_HW_ENABLE_USBDEV=0 sees zero

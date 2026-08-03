@@ -82,6 +82,11 @@ void mp_hal_stdin_uart_irq_init(void);
 // Pin HAL type and access helpers.
 #define mp_hal_pin_obj_t const machine_pin_obj_t *
 
+// Used by SoftI2C/SoftSPI's print() methods to name their pins; pin objects
+// already carry their qstr name (see machine_pin_obj_t), same as stm32.
+#define MP_HAL_PIN_FMT "%q"
+#define mp_hal_pin_name(p) ((p)->name)
+
 static inline void mp_hal_pin_input(mp_hal_pin_obj_t pin) {
     mp_uint_t atomic_state = MICROPY_BEGIN_ATOMIC_SECTION();
     PIN_DISABLE_OPEN_DRAIN(pin->port, pin->pin);
@@ -151,5 +156,9 @@ mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t obj);
 #if MICROPY_PY_OS_URANDOM
 void mp_hal_get_random(size_t n, uint8_t *buf);
 #endif
+
+// No faster-than-mp_hal_delay_us primitive on this port (busy-wait on the
+// TickTimer either way); SoftI2C/SoftSPI bit-banging just uses the same one.
+#define mp_hal_delay_us_fast(us) mp_hal_delay_us(us)
 
 #endif // MICROPY_INCLUDED_BAOCHIP_MPHALPORT_H
