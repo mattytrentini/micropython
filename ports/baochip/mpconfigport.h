@@ -63,6 +63,8 @@
 #define MICROPY_PY_MACHINE_WDT                  (1)
 #define MICROPY_PY_MACHINE_WDT_INCLUDEFILE      "ports/baochip/machine_wdt.c"
 #define MICROPY_PY_MACHINE_WDT_TIMEOUT_MS       (1)
+#define MICROPY_PY_MACHINE_PWM                  (1)
+#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE      "ports/baochip/machine_pwm.c"
 #define MICROPY_PY_SYS_PLATFORM     "baochip"
 #define MICROPY_PY_OS_UNAME         (1)
 #ifndef MICROPY_PY_OS_DUPTERM
