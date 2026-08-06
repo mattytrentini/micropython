@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "py/mpconfig.h"
+#include "py/mphal.h"
 #include "py/ringbuf.h"
 #include "py/runtime.h"
 #include "py/stream.h"
@@ -323,6 +324,14 @@ mp_uint_t mp_hal_ticks_ms(void) {
 // instead of linking in delay.c and racing its init against ours.
 uint64_t millis(void) {
     return ticktimer_read_us() / 1000U;
+}
+
+// bao_stdlib's delay.c also provides delay_us(), but linking it in would
+// pull in delay_ms()/ticktimer_init() and reintroduce the millis() clash
+// above.  adc.c calls delay_us(); route it through our own ticktimer
+// instead of the SDK's.
+void delay_us(uint32_t us) {
+    mp_hal_delay_us(us);
 }
 
 mp_uint_t mp_hal_ticks_cpu(void) {

@@ -89,6 +89,7 @@ INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_rtc/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_wdt/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_trng/include
 INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_pwm/include
+INC += -I$(DABAO_SDK_DIR)/src/bao1x/hardware_adc/include
 INC += -I$(DABAO_SDK_DIR)/src/boards/include
 
 CFLAGS += $(INC)
@@ -120,6 +121,7 @@ SDK_SRC = $(addprefix $(DABAO_SDK)/, \
     src/bao1x/hardware_wdt/wdt.c \
     src/bao1x/hardware_trng/trng.c \
     src/bao1x/hardware_pwm/pwm.c \
+    src/bao1x/hardware_adc/adc.c \
     src/sevs/sevs_assert_target.c \
     )
 
