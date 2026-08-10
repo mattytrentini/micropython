@@ -159,4 +159,13 @@
 #define MP_BC_IMPORT_FROM                   (MP_BC_BASE_QSTR_O + 0x0c) // qstr
 #define MP_BC_IMPORT_STAR                   (MP_BC_BASE_BYTE_E + 0x09)
 
+// PEP 810-subset lazy imports (see MICROPY_MODULE_LAZY_IMPORT); these use
+// the last 3 free slots in the QSTR_O block (nibble diagram above: the
+// trailing "---" after "II").
+#if MICROPY_MODULE_LAZY_IMPORT
+#define MP_BC_IMPORT_NAME_LAZY               (MP_BC_BASE_QSTR_O + 0x0d) // qstr
+#define MP_BC_IMPORT_FROM_LAZY_START         (MP_BC_BASE_QSTR_O + 0x0e) // qstr
+#define MP_BC_IMPORT_FROM_LAZY               (MP_BC_BASE_QSTR_O + 0x0f) // qstr
+#endif
+
 #endif // MICROPY_INCLUDED_PY_BC0_H

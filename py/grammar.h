@@ -148,7 +148,32 @@ DEF_RULE_NC(raise_stmt_from, and_ident(2), tok(KW_FROM), rule(test))
 // nonlocal_stmt: 'nonlocal' NAME (',' NAME)*
 // assert_stmt: 'assert' test [',' test]
 
+// lazy_import_name: 'lazy' 'import' dotted_as_names
+// lazy_import_from: 'lazy' 'from' (('.' | '...')* dotted_name | ('.' | '...')+) 'import' ('(' import_as_names ')' | import_as_names)
+// (PEP 810 subset, see MICROPY_MODULE_LAZY_IMPORT; "lazy from ... import *" is
+// not supported, so lazy_import_from reuses import_as_names_paren/import_as_names
+// directly rather than import_from_3, which also allows a bare '*'.)
+#if MICROPY_MODULE_LAZY_IMPORT
+// lazy_stmt/lazy_stmt_2 exist purely so that the 'lazy' token is matched
+// once, in its own and-rule, before choosing between the import/from
+// bodies. The parser can only backtrack out of an and-rule on a mismatch
+// of its *first* token (see mp_parse()'s RULE_ACT_AND handling) - if
+// lazy_import_name/lazy_import_from each matched their own leading 'lazy'
+// token directly, "lazy from ..." would fail to parse: lazy_import_name
+// would consume 'lazy', then fail to match 'import' against 'from' at
+// i=1, which is a hard syntax error (i>0), not a backtrack-and-try-the-
+// next-alternative. Splitting 'lazy' into its own wrapper rule means the
+// import-vs-from choice is a fresh i=0 decision, exactly like plain
+// import_stmt already disambiguates import_name vs import_from.
+DEF_RULE_NC(import_stmt, or(3), rule(import_name), rule(import_from), rule(lazy_stmt))
+DEF_RULE(lazy_stmt, c(lazy_stmt), and(2), tok(KW_LAZY), rule(lazy_stmt_2))
+DEF_RULE_NC(lazy_stmt_2, or(2), rule(lazy_import_name), rule(lazy_import_from))
+DEF_RULE(lazy_import_name, c(lazy_import_name), and(2), tok(KW_IMPORT), rule(dotted_as_names))
+DEF_RULE(lazy_import_from, c(lazy_import_from), and(4), tok(KW_FROM), rule(import_from_2), tok(KW_IMPORT), rule(lazy_import_from_3))
+DEF_RULE_NC(lazy_import_from_3, or(2), rule(import_as_names_paren), rule(import_as_names))
+#else
 DEF_RULE_NC(import_stmt, or(2), rule(import_name), rule(import_from))
+#endif
 DEF_RULE(import_name, c(import_name), and(2), tok(KW_IMPORT), rule(dotted_as_names))
 DEF_RULE(import_from, c(import_from), and(4), tok(KW_FROM), rule(import_from_2), tok(KW_IMPORT), rule(import_from_3))
 DEF_RULE_NC(import_from_2, or(2), rule(dotted_name), rule(import_from_2b))

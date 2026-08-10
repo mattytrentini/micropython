@@ -85,6 +85,65 @@ imported in the usual way. Alternatively some or all modules may be implemented
 as frozen bytecode: on most platforms this saves even more RAM as the bytecode
 is run directly from flash rather than being stored in RAM.
 
+Lazy imports
+~~~~~~~~~~~~
+
+An import statement pays its RAM and time cost (compiling and running the
+module's top-level code) immediately, even if the module - or most of it -
+turns out to be unused on a given run. This is often wasted cost for
+optional or rarely-needed dependencies (e.g. a JSON encoder only used when
+logging is turned on, or a driver for hardware that isn't always present).
+
+Builds with ``MICROPY_MODULE_LAZY_IMPORT`` enabled support a subset of
+Python 3.15's ``lazy import`` statement (`PEP 810
+<https://peps.python.org/pep-0810/>`_): the target name is bound
+immediately, but the module itself isn't compiled or executed - and does
+not appear in ``sys.modules`` - until the name is actually used:
+
+.. code::
+
+    lazy import json
+    lazy from collections import OrderedDict
+
+    # json/collections aren't imported yet; the real import (and its RAM/time
+    # cost) only happens the first time the name below is accessed
+    def log(data):
+        print(json.dumps(data))
+
+This is restricted to module scope (a ``SyntaxError`` elsewhere), does not
+support ``lazy from module import *``, and - unlike CPython - ``lazy`` is a
+reserved word in any build with the feature enabled rather than a true
+context-sensitive keyword. If the target module fails to import, the error
+is raised at the point of first use, not at the ``lazy import`` statement.
+
+This is a compile-time opt-in (default off, independent of the usual
+feature-level ladder) since the check it adds to every global/name lookup
+has a small permanent runtime cost that isn't free to enable everywhere -
+see the comment above ``MICROPY_MODULE_LAZY_IMPORT`` in ``py/mpconfig.h``.
+
+On builds without this feature, the same effect can be achieved manually,
+at no extra cost, using module-level ``__getattr__`` (`PEP 562
+<https://peps.python.org/pep-0562/>`_, ``MICROPY_MODULE_GETATTR``, on by
+default): have the module needing the optional dependency defer the import
+into its own ``__getattr__``, caching the result in its globals so the
+``__getattr__`` call only happens once:
+
+.. code::
+
+    # mypackage/__init__.py
+    def __getattr__(name):
+        if name == "heavy_thing":
+            global heavy_thing
+            from . import _heavy_impl as heavy_thing
+            return heavy_thing
+        raise AttributeError(name)
+
+This only intercepts attribute access on ``mypackage`` itself (e.g.
+``mypackage.heavy_thing``), not a bare ``from mypackage import heavy_thing``
+at the call site, and requires the module author to write it explicitly -
+but it works everywhere, with no config flag and no runtime cost for
+modules that don't use it.
+
 Execution phase
 ~~~~~~~~~~~~~~~
 

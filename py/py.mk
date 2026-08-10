@@ -188,6 +188,7 @@ PY_CORE_O_BASENAME = $(addprefix py/,\
 	objint.o \
 	objint_longlong.o \
 	objint_mpz.o \
+	objlazyimport.o \
 	objlist.o \
 	objmap.o \
 	objmodule.o \

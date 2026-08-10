@@ -1,0 +1,5 @@
+before lazy import
+lazy import statement did not raise
+attempt 0 raised ImportError
+attempt 1 raised ImportError
+from-import attribute lookup raised ImportError

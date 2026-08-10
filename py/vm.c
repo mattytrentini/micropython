@@ -1277,6 +1277,31 @@ yield:
                     mp_import_all(POP());
                     DISPATCH();
 
+                #if MICROPY_MODULE_LAZY_IMPORT
+                ENTRY(MP_BC_IMPORT_NAME_LAZY): {
+                    MARK_EXC_IP_SELECTIVE();
+                    DECODE_QSTR;
+                    mp_obj_t walk_flag = POP();
+                    SET_TOP(mp_import_name_lazy(qst, TOP(), walk_flag));
+                    DISPATCH();
+                }
+
+                ENTRY(MP_BC_IMPORT_FROM_LAZY_START): {
+                    MARK_EXC_IP_SELECTIVE();
+                    DECODE_QSTR;
+                    SET_TOP(mp_import_from_lazy_start(qst, TOP()));
+                    DISPATCH();
+                }
+
+                ENTRY(MP_BC_IMPORT_FROM_LAZY): {
+                    MARK_EXC_IP_SELECTIVE();
+                    DECODE_QSTR;
+                    mp_obj_t obj = mp_import_from_lazy(TOP(), qst);
+                    PUSH(obj);
+                    DISPATCH();
+                }
+                #endif
+
                 #if MICROPY_OPT_COMPUTED_GOTO
                 ENTRY(MP_BC_LOAD_CONST_SMALL_INT_MULTI):
                     PUSH(MP_OBJ_NEW_SMALL_INT((mp_int_t)ip[-1] - MP_BC_LOAD_CONST_SMALL_INT_MULTI - MP_BC_LOAD_CONST_SMALL_INT_MULTI_EXCESS));

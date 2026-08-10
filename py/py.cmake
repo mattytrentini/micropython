@@ -98,6 +98,7 @@ set(MICROPY_SOURCE_PY
     ${MICROPY_PY_DIR}/objint.c
     ${MICROPY_PY_DIR}/objint_longlong.c
     ${MICROPY_PY_DIR}/objint_mpz.c
+    ${MICROPY_PY_DIR}/objlazyimport.c
     ${MICROPY_PY_DIR}/objlist.c
     ${MICROPY_PY_DIR}/objmap.c
     ${MICROPY_PY_DIR}/objmodule.c

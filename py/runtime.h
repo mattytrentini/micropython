@@ -259,6 +259,17 @@ mp_obj_t mp_import_name(qstr name, mp_obj_t fromlist, mp_obj_t level);
 mp_obj_t mp_import_from(mp_obj_t module, qstr name);
 void mp_import_all(mp_obj_t module);
 
+#if MICROPY_MODULE_LAZY_IMPORT
+// PEP 810-subset lazy imports; see py/objlazyimport.c.
+mp_obj_t mp_import_name_lazy(qstr name, mp_obj_t level, mp_obj_t walk_flag);
+mp_obj_t mp_import_from_lazy_start(qstr module_name, mp_obj_t level);
+mp_obj_t mp_import_from_lazy(mp_obj_t pending, qstr name);
+// Reifies a lazy-import proxy (mp_type_lazy_import) into the real object it
+// stands in for; may raise. Called from mp_load_global() on first access.
+mp_obj_t mp_lazy_import_reify(mp_obj_t self_in);
+extern const mp_obj_type_t mp_type_lazy_import;
+#endif
+
 #if MICROPY_ERROR_REPORTING == MICROPY_ERROR_REPORTING_NONE
 MP_NORETURN void mp_raise_type(const mp_obj_type_t *exc_type);
 MP_NORETURN void mp_raise_ValueError_no_msg(void);

@@ -240,6 +240,22 @@ mp_obj_t MICROPY_WRAP_MP_LOAD_GLOBAL(mp_load_global)(qstr qst) {
     // logic: search globals, builtins
     DEBUG_OP_printf("load global %s\n", qstr_str(qst));
     mp_map_elem_t *elem = mp_map_lookup(&mp_globals_get()->map, MP_OBJ_NEW_QSTR(qst), MP_MAP_LOOKUP);
+    #if MICROPY_MODULE_LAZY_IMPORT
+    if (elem != NULL && mp_obj_is_type(elem->value, &mp_type_lazy_import)) {
+        // Reify before returning; only assign on success so a failed import
+        // leaves the proxy in place for the next access to retry (matches
+        // CPython's own documented lazy-import error semantics). This is
+        // the single choke point for both MP_BC_LOAD_GLOBAL and
+        // MP_BC_LOAD_NAME (mp_load_name() falls through to here for any
+        // name not found in a distinct locals dict, which includes every
+        // module-top-level name and every implicit-global read from inside
+        // a function - see py/compile.c ID_INFO_KIND_GLOBAL_IMPLICIT and
+        // MICROPY_MODULE_LAZY_IMPORT's docs in py/mpconfig.h) - a lazy
+        // import is always bound at module scope, so it always ends up
+        // here regardless of which of those two opcodes triggered the load.
+        elem->value = mp_lazy_import_reify(elem->value);
+    }
+    #endif
     if (elem == NULL) {
         #if MICROPY_CAN_OVERRIDE_BUILTINS
         if (MP_STATE_VM(mp_module_builtins_override_dict) != NULL) {

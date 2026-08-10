@@ -63,6 +63,11 @@ typedef enum {
 #define MP_EMIT_IMPORT_NAME (0)
 #define MP_EMIT_IMPORT_FROM (1)
 #define MP_EMIT_IMPORT_STAR (2)
+#if MICROPY_MODULE_LAZY_IMPORT
+#define MP_EMIT_IMPORT_NAME_LAZY (3)
+#define MP_EMIT_IMPORT_FROM_LAZY_START (4)
+#define MP_EMIT_IMPORT_FROM_LAZY (5)
+#endif
 
 // Kind for emit->subscr()
 #define MP_EMIT_SUBSCR_LOAD (0)

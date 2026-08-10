@@ -88,6 +88,9 @@ typedef enum _mp_token_kind_t {
     MP_TOKEN_KW_IN,
     MP_TOKEN_KW_IS,
     MP_TOKEN_KW_LAMBDA,
+    #if MICROPY_MODULE_LAZY_IMPORT
+    MP_TOKEN_KW_LAZY,
+    #endif
     MP_TOKEN_KW_NONLOCAL,
     MP_TOKEN_KW_NOT,
     MP_TOKEN_KW_OR,

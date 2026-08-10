@@ -1084,6 +1084,39 @@ static void compile_raise_stmt(compiler_t *comp, mp_parse_node_struct_t *pns) {
     }
 }
 
+#if MICROPY_MODULE_LAZY_IMPORT
+// Joins the NAME nodes of a PN_dotted_name struct into a single "a.b.c" qstr.
+// Only needed by the lazy import paths below: do_import_name() (the eager,
+// default-enabled path) keeps its own inline copy of this so that build
+// stays identical to before this feature existed when the flag is off.
+static qstr build_dotted_qstr(mp_parse_node_struct_t *pns) {
+    size_t n = MP_PARSE_NODE_STRUCT_NUM_NODES(pns);
+    if (n == 0) {
+        // There must be at least one node in this PN_dotted_name.
+        // Let the compiler know this so it doesn't warn, and can generate better code.
+        MP_UNREACHABLE;
+    }
+    size_t len = n - 1;
+    for (size_t i = 0; i < n; i++) {
+        len += qstr_len(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]));
+    }
+    char *q_ptr = mp_local_alloc(len);
+    char *str_dest = q_ptr;
+    for (size_t i = 0; i < n; i++) {
+        if (i > 0) {
+            *str_dest++ = '.';
+        }
+        size_t str_src_len;
+        const byte *str_src = qstr_data(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]), &str_src_len);
+        memcpy(str_dest, str_src, str_src_len);
+        str_dest += str_src_len;
+    }
+    qstr q_full = qstr_from_strn(q_ptr, len);
+    mp_local_free(q_ptr);
+    return q_full;
+}
+#endif
+
 // q_base holds the base of the name
 // eg   a -> q_base=a
 //      a.b.c -> q_base=a
@@ -1110,43 +1143,82 @@ static void do_import_name(compiler_t *comp, mp_parse_node_t pn, qstr *q_base) {
     } else {
         assert(MP_PARSE_NODE_IS_STRUCT_KIND(pn, PN_dotted_name)); // should be
         mp_parse_node_struct_t *pns = (mp_parse_node_struct_t *)pn;
-        {
-            // a name of the form a.b.c
-            if (!is_as) {
-                *q_base = MP_PARSE_NODE_LEAF_ARG(pns->nodes[0]);
+        // a name of the form a.b.c
+        if (!is_as) {
+            *q_base = MP_PARSE_NODE_LEAF_ARG(pns->nodes[0]);
+        }
+        size_t n = MP_PARSE_NODE_STRUCT_NUM_NODES(pns);
+        if (n == 0) {
+            // There must be at least one node in this PN_dotted_name.
+            // Let the compiler know this so it doesn't warn, and can generate better code.
+            MP_UNREACHABLE;
+        }
+        size_t len = n - 1;
+        for (size_t i = 0; i < n; i++) {
+            len += qstr_len(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]));
+        }
+        char *q_ptr = mp_local_alloc(len);
+        char *str_dest = q_ptr;
+        for (size_t i = 0; i < n; i++) {
+            if (i > 0) {
+                *str_dest++ = '.';
             }
-            size_t n = MP_PARSE_NODE_STRUCT_NUM_NODES(pns);
-            if (n == 0) {
-                // There must be at least one node in this PN_dotted_name.
-                // Let the compiler know this so it doesn't warn, and can generate better code.
-                MP_UNREACHABLE;
-            }
-            size_t len = n - 1;
-            for (size_t i = 0; i < n; i++) {
-                len += qstr_len(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]));
-            }
-            char *q_ptr = mp_local_alloc(len);
-            char *str_dest = q_ptr;
-            for (size_t i = 0; i < n; i++) {
-                if (i > 0) {
-                    *str_dest++ = '.';
-                }
-                size_t str_src_len;
-                const byte *str_src = qstr_data(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]), &str_src_len);
-                memcpy(str_dest, str_src, str_src_len);
-                str_dest += str_src_len;
-            }
-            qstr q_full = qstr_from_strn(q_ptr, len);
-            mp_local_free(q_ptr);
-            EMIT_ARG(import, q_full, MP_EMIT_IMPORT_NAME);
-            if (is_as) {
-                for (size_t i = 1; i < n; i++) {
-                    EMIT_ARG(attr, MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]), MP_EMIT_ATTR_LOAD);
-                }
+            size_t str_src_len;
+            const byte *str_src = qstr_data(MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]), &str_src_len);
+            memcpy(str_dest, str_src, str_src_len);
+            str_dest += str_src_len;
+        }
+        qstr q_full = qstr_from_strn(q_ptr, len);
+        mp_local_free(q_ptr);
+        EMIT_ARG(import, q_full, MP_EMIT_IMPORT_NAME);
+        if (is_as) {
+            for (size_t i = 1; i < n; i++) {
+                EMIT_ARG(attr, MP_PARSE_NODE_LEAF_ARG(pns->nodes[i]), MP_EMIT_ATTR_LOAD);
             }
         }
     }
 }
+
+#if MICROPY_MODULE_LAZY_IMPORT
+// Lazy counterpart of do_import_name(): instead of emitting a real import,
+// emits code that builds a lazy-module proxy (see MICROPY_MODULE_LAZY_IMPORT).
+// Pushes a walk_flag before the import call (consumed by mp_import_name_lazy()
+// alongside level) so that "lazy import a.b.c as y" can defer walking .b.c
+// down to the leaf module into reification too, instead of doing it now,
+// which is the one thing this can't just borrow do_import_name()'s emitted
+// sequence for.
+static void do_import_name_lazy(compiler_t *comp, mp_parse_node_t pn, qstr *q_base) {
+    bool is_as = false;
+    if (MP_PARSE_NODE_IS_STRUCT_KIND(pn, PN_dotted_as_name)) {
+        mp_parse_node_struct_t *pns = (mp_parse_node_struct_t *)pn;
+        *q_base = MP_PARSE_NODE_LEAF_ARG(pns->nodes[1]);
+        pn = pns->nodes[0];
+        is_as = true;
+    }
+    if (MP_PARSE_NODE_IS_NULL(pn)) {
+        *q_base = MP_QSTR_;
+        EMIT_ARG(load_const_tok, MP_TOKEN_KW_FALSE); // no attribute walk needed at reification
+        EMIT_ARG(import, MP_QSTR_, MP_EMIT_IMPORT_NAME_LAZY);
+    } else if (MP_PARSE_NODE_IS_ID(pn)) {
+        qstr q_full = MP_PARSE_NODE_LEAF_ARG(pn);
+        if (!is_as) {
+            *q_base = q_full;
+        }
+        EMIT_ARG(load_const_tok, MP_TOKEN_KW_FALSE);
+        EMIT_ARG(import, q_full, MP_EMIT_IMPORT_NAME_LAZY);
+    } else {
+        assert(MP_PARSE_NODE_IS_STRUCT_KIND(pn, PN_dotted_name));
+        mp_parse_node_struct_t *pns = (mp_parse_node_struct_t *)pn;
+        if (!is_as) {
+            *q_base = MP_PARSE_NODE_LEAF_ARG(pns->nodes[0]);
+        }
+        qstr q_full = build_dotted_qstr(pns);
+        bool walk = is_as && MP_PARSE_NODE_STRUCT_NUM_NODES(pns) > 1;
+        EMIT_ARG(load_const_tok, walk ? MP_TOKEN_KW_TRUE : MP_TOKEN_KW_FALSE);
+        EMIT_ARG(import, q_full, MP_EMIT_IMPORT_NAME_LAZY);
+    }
+}
+#endif
 
 static void compile_dotted_as_name(compiler_t *comp, mp_parse_node_t pn) {
     EMIT_ARG(load_const_small_int, 0); // level 0 import
@@ -1160,23 +1232,66 @@ static void compile_import_name(compiler_t *comp, mp_parse_node_struct_t *pns) {
     apply_to_single_or_list(comp, pns->nodes[0], PN_dotted_as_names, compile_dotted_as_name);
 }
 
-static void compile_import_from(compiler_t *comp, mp_parse_node_struct_t *pns) {
-    mp_parse_node_t pn_import_source = pns->nodes[0];
+#if MICROPY_MODULE_LAZY_IMPORT
+// lazy_stmt just wraps the 'lazy' token around whichever of
+// lazy_import_name/lazy_import_from actually matched (see the grammar.h
+// comment above lazy_stmt for why this needs its own rule) - dispatch
+// straight through to it.
+static void compile_lazy_stmt(compiler_t *comp, mp_parse_node_struct_t *pns) {
+    compile_node(comp, pns->nodes[0]);
+}
 
-    // extract the preceding .'s (if any) for a relative import, to compute the import level
+static void compile_lazy_dotted_as_name(compiler_t *comp, mp_parse_node_t pn) {
+    // No fromlist is pushed here (unlike compile_dotted_as_name) - a
+    // whole-module lazy import never has one; mp_import_name_lazy() only
+    // takes level and the walk_flag that do_import_name_lazy() emits.
+    EMIT_ARG(load_const_small_int, 0); // level 0 import
+    qstr q_base;
+    do_import_name_lazy(comp, pn, &q_base);
+    compile_store_id(comp, q_base);
+}
+
+// PEP 810 disallows "lazy import"/"lazy from ... import ..." outside module
+// scope, and also inside a try/except/finally block (so a misleading
+// "except ImportError:" can't look like it handles a lazy import's error,
+// when that error actually only ever surfaces later, at first use).
+// comp->cur_except_level, which also covers 'with' blocks, is a slightly
+// broader check than CPython's - disallowing lazy imports inside 'with' too
+// - but that's a harmless, simpler-to-implement superset of the restriction.
+static bool compile_lazy_import_check_scope(compiler_t *comp, mp_parse_node_struct_t *pns) {
+    if (comp->scope_cur->kind != SCOPE_MODULE || comp->cur_except_level > 0) {
+        compile_syntax_error(comp, (mp_parse_node_t)pns, MP_ERROR_TEXT("lazy import only allowed at module level"));
+        return false;
+    }
+    return true;
+}
+
+static void compile_lazy_import_name(compiler_t *comp, mp_parse_node_struct_t *pns) {
+    if (!compile_lazy_import_check_scope(comp, pns)) {
+        return;
+    }
+    apply_to_single_or_list(comp, pns->nodes[0], PN_dotted_as_names, compile_lazy_dotted_as_name);
+}
+#endif
+
+// Extracts the preceding .'s/...'s (if any) from a "from" import source node,
+// to compute the relative import level; pn_import_source is updated in place
+// to strip them off, leaving just the dotted-name part (or MP_PARSE_NODE_NULL
+// for a pure-relative "from . import x").
+static uint compile_import_from_get_level(mp_parse_node_t *pn_import_source) {
     uint import_level = 0;
     do {
         mp_parse_node_t pn_rel;
-        if (MP_PARSE_NODE_IS_TOKEN(pn_import_source) || MP_PARSE_NODE_IS_STRUCT_KIND(pn_import_source, PN_one_or_more_period_or_ellipsis)) {
+        if (MP_PARSE_NODE_IS_TOKEN(*pn_import_source) || MP_PARSE_NODE_IS_STRUCT_KIND(*pn_import_source, PN_one_or_more_period_or_ellipsis)) {
             // This covers relative imports with dots only like "from .. import"
-            pn_rel = pn_import_source;
-            pn_import_source = MP_PARSE_NODE_NULL;
-        } else if (MP_PARSE_NODE_IS_STRUCT_KIND(pn_import_source, PN_import_from_2b)) {
+            pn_rel = *pn_import_source;
+            *pn_import_source = MP_PARSE_NODE_NULL;
+        } else if (MP_PARSE_NODE_IS_STRUCT_KIND(*pn_import_source, PN_import_from_2b)) {
             // This covers relative imports starting with dot(s) like "from .foo import"
-            mp_parse_node_struct_t *pns_2b = (mp_parse_node_struct_t *)pn_import_source;
+            mp_parse_node_struct_t *pns_2b = (mp_parse_node_struct_t *)*pn_import_source;
             pn_rel = pns_2b->nodes[0];
-            pn_import_source = pns_2b->nodes[1];
-            assert(!MP_PARSE_NODE_IS_NULL(pn_import_source)); // should not be
+            *pn_import_source = pns_2b->nodes[1];
+            assert(!MP_PARSE_NODE_IS_NULL(*pn_import_source)); // should not be
         } else {
             // Not a relative import
             break;
@@ -1196,6 +1311,12 @@ static void compile_import_from(compiler_t *comp, mp_parse_node_struct_t *pns) {
             }
         }
     } while (0);
+    return import_level;
+}
+
+static void compile_import_from(compiler_t *comp, mp_parse_node_struct_t *pns) {
+    mp_parse_node_t pn_import_source = pns->nodes[0];
+    uint import_level = compile_import_from_get_level(&pn_import_source);
 
     if (MP_PARSE_NODE_IS_TOKEN_KIND(pns->nodes[1], MP_TOKEN_OP_STAR)) {
         #if MICROPY_CPYTHON_COMPAT
@@ -1247,6 +1368,52 @@ static void compile_import_from(compiler_t *comp, mp_parse_node_struct_t *pns) {
         EMIT(pop_top);
     }
 }
+
+#if MICROPY_MODULE_LAZY_IMPORT
+static void compile_lazy_import_from(compiler_t *comp, mp_parse_node_struct_t *pns) {
+    if (!compile_lazy_import_check_scope(comp, pns)) {
+        return;
+    }
+
+    // "lazy from X import *" is already rejected by the grammar
+    // (lazy_import_from_3 has no OP_STAR alternative, unlike import_from_3).
+
+    mp_parse_node_t pn_import_source = pns->nodes[0];
+    uint import_level = compile_import_from_get_level(&pn_import_source);
+
+    // Compute the dotted module-name qstr for the "from" source (or MP_QSTR_
+    // for a pure-relative "from . import x") - same cases do_import_name_lazy()
+    // handles, but here nothing is imported yet: the qstr is just stashed in
+    // the pending-import object that MP_EMIT_IMPORT_FROM_LAZY_START creates.
+    qstr module_name;
+    if (MP_PARSE_NODE_IS_NULL(pn_import_source)) {
+        module_name = MP_QSTR_;
+    } else if (MP_PARSE_NODE_IS_ID(pn_import_source)) {
+        module_name = MP_PARSE_NODE_LEAF_ARG(pn_import_source);
+    } else {
+        assert(MP_PARSE_NODE_IS_STRUCT_KIND(pn_import_source, PN_dotted_name));
+        module_name = build_dotted_qstr((mp_parse_node_struct_t *)pn_import_source);
+    }
+
+    EMIT_ARG(load_const_small_int, import_level);
+    EMIT_ARG(import, module_name, MP_EMIT_IMPORT_FROM_LAZY_START);
+
+    mp_parse_node_t *pn_nodes;
+    size_t n = mp_parse_node_extract_list(&pns->nodes[1], PN_import_as_names, &pn_nodes);
+    for (size_t i = 0; i < n; i++) {
+        assert(MP_PARSE_NODE_IS_STRUCT_KIND(pn_nodes[i], PN_import_as_name));
+        mp_parse_node_struct_t *pns3 = (mp_parse_node_struct_t *)pn_nodes[i];
+        qstr id2 = MP_PARSE_NODE_LEAF_ARG(pns3->nodes[0]); // should be id
+        EMIT_ARG(import, id2, MP_EMIT_IMPORT_FROM_LAZY);
+        if (MP_PARSE_NODE_IS_NULL(pns3->nodes[1])) {
+            compile_store_id(comp, id2);
+        } else {
+            compile_store_id(comp, MP_PARSE_NODE_LEAF_ARG(pns3->nodes[1]));
+        }
+    }
+    EMIT(pop_top); // drop the pending-import object
+}
+#endif
 
 static void compile_declare_global(compiler_t *comp, mp_parse_node_t pn, id_info_t *id_info) {
     if (id_info->kind != ID_INFO_KIND_UNDECIDED && id_info->kind != ID_INFO_KIND_GLOBAL_EXPLICIT) {

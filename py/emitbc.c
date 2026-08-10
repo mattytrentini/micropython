@@ -472,6 +472,26 @@ void mp_emit_bc_label_assign(emit_t *emit, mp_uint_t l) {
 void mp_emit_bc_import(emit_t *emit, qstr qst, int kind) {
     MP_STATIC_ASSERT(MP_BC_IMPORT_NAME + MP_EMIT_IMPORT_NAME == MP_BC_IMPORT_NAME);
     MP_STATIC_ASSERT(MP_BC_IMPORT_NAME + MP_EMIT_IMPORT_FROM == MP_BC_IMPORT_FROM);
+    #if MICROPY_MODULE_LAZY_IMPORT
+    // These don't fit the MP_BC_IMPORT_NAME+kind offset trick above (kind
+    // values aren't contiguous with the opcode values once MP_EMIT_IMPORT_STAR
+    // is taken into account), so handle them explicitly.
+    if (kind == MP_EMIT_IMPORT_NAME_LAZY) {
+        // Consumes level and walk_flag (both pushed by do_import_name_lazy()
+        // in py/compile.c), produces a lazy-module proxy: net stack change -1.
+        emit_write_bytecode_byte_qstr(emit, -1, MP_BC_IMPORT_NAME_LAZY, qst);
+        return;
+    } else if (kind == MP_EMIT_IMPORT_FROM_LAZY_START) {
+        // Consumes level, produces a pending-import object: net stack change 0.
+        emit_write_bytecode_byte_qstr(emit, 0, MP_BC_IMPORT_FROM_LAZY_START, qst);
+        return;
+    } else if (kind == MP_EMIT_IMPORT_FROM_LAZY) {
+        // Peeks the pending-import object (doesn't pop it), produces a
+        // lazy-name proxy: net stack change +1, same as MP_EMIT_IMPORT_FROM.
+        emit_write_bytecode_byte_qstr(emit, 1, MP_BC_IMPORT_FROM_LAZY, qst);
+        return;
+    }
+    #endif
     int stack_adj = kind == MP_EMIT_IMPORT_FROM ? 1 : -1;
     if (kind == MP_EMIT_IMPORT_STAR) {
         emit_write_bytecode_byte(emit, stack_adj, MP_BC_IMPORT_STAR);

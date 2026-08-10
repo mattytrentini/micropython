@@ -760,6 +760,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
     skip_set_type = False
     skip_slice = False
     skip_async = False
+    skip_lazy_import = False
     skip_const = False
     skip_revops = False
     skip_fstring = False
@@ -808,6 +809,12 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         output = run_feature_check(pyb, args, "async_check.py")
         if output != b"async\n":
             skip_async = True
+
+        # Check if 'lazy import'/'lazy from ... import ...' keywords are
+        # supported (MICROPY_MODULE_LAZY_IMPORT), and skip such tests if not
+        output = run_feature_check(pyb, args, "lazy_import_check.py")
+        if output != b"lazy_import\n":
+            skip_lazy_import = True
 
         # Check if const keyword (MicroPython extension) is supported, and skip such tests if it's not
         output = run_feature_check(pyb, args, "const.py")
@@ -986,6 +993,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         is_set_type = test_name.startswith(("set_", "frozenset")) or test_name.endswith("_set")
         is_slice = test_name.find("slice") != -1
         is_async = test_name.startswith(("async_", "asyncio_")) or test_name.endswith("_async")
+        is_lazy_import = test_name.startswith("lazy_import")
         is_const = test_name.startswith("const")
         is_fstring = test_name.startswith("string_fstring") or test_name.endswith("_fstring")
         is_tstring = test_name.startswith("string_tstring") or test_name.endswith("_tstring")
@@ -1000,6 +1008,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         skip_it |= skip_set_type and is_set_type
         skip_it |= skip_slice and is_slice
         skip_it |= skip_async and is_async
+        skip_it |= skip_lazy_import and is_lazy_import
         skip_it |= skip_const and is_const
         skip_it |= skip_revops and "reverse_op" in test_name
         skip_it |= skip_fstring and is_fstring

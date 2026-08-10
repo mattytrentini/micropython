@@ -1153,6 +1153,17 @@ typedef time_t mp_timestamp_t;
 #define MICROPY_MODULE_GETATTR (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_CORE_FEATURES)
 #endif
 
+// Whether to support a subset of PEP 810 explicit lazy imports:
+// "lazy import module [as name]" and "lazy from module import name [as name]".
+// Not tied to the ROM-level ladder (unlike most MICROPY_MODULE_* flags above)
+// because every global/name lookup pays a small runtime check when this is
+// enabled (MicroPython has no specializing interpreter to amortize it away
+// the way CPython 3.15 does), so it should stay an explicit, deliberate
+// opt-in rather than bundled into an existing feature tier.
+#ifndef MICROPY_MODULE_LAZY_IMPORT
+#define MICROPY_MODULE_LAZY_IMPORT (0)
+#endif
+
 // Whether to enable importing foo.py with __name__ set to '__main__'
 // Used by the unix port for the -m flag.
 #ifndef MICROPY_MODULE_OVERRIDE_MAIN_IMPORT

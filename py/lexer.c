@@ -291,6 +291,9 @@ static const char *const tok_kw[] = {
     "in",
     "is",
     "lambda",
+    #if MICROPY_MODULE_LAZY_IMPORT
+    "lazy",
+    #endif
     "nonlocal",
     "not",
     "or",
