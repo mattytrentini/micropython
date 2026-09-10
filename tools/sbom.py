@@ -21,6 +21,11 @@ For submodules the version resolution is layered:
     3. short commit SHA — final fallback when nothing else identifies the
        pinned commit (forks, branch-tracking submodules, frozen sources).
 
+A few submodules are collections of independently versioned per-MCU-family
+trees (lib/stm32lib, lib/asf4) where no single version is correct. These keep
+their commit pin on the parent component and additionally emit one nested
+sub-component per family, each with its own in-tree version.
+
 The ``version:source`` property on each component records which strategy was
 used. If an in-tree extractor's expected file or field is missing, the
 script reports the failure and exits non-zero — that condition means
@@ -386,6 +391,94 @@ def _vext_oofatfs(repo):
     return f"{base}-rev{rev}"
 
 
+# --- sub-component builders -------------------------------------------------
+#
+# A few submodules are not single libraries but collections of independently
+# versioned per-MCU-family trees, so one version for the whole submodule is
+# never correct. These builders emit CycloneDX nested sub-components — one per
+# family — under the parent submodule component, which keeps the parent's
+# commit pin intact while still exposing a usable version per family.
+
+
+def _sub_stm32lib(repo):
+    """One sub-component per STM32 family, from its CMSIS device header.
+
+    The version macro prefix is inconsistent across families (F0 uses
+    ``__STM32F0_DEVICE_VERSION_*``, H7 ``__STM32H7xx_CMSIS_DEVICE_VERSION_*``,
+    most others ``__STM32<fam>_CMSIS_VERSION_*``), so match on the common
+    suffix instead of reconstructing each prefix.
+
+    The CMSIS device package version is used rather than the HAL driver
+    version because only F4 and F7 still declare the latter, whereas every
+    family carries the former.
+    """
+    base = repo / "lib/stm32lib/CMSIS"
+    if not base.is_dir():
+        raise ExtractorError("lib/stm32lib/CMSIS: directory missing")
+    subs = []
+    for d in sorted(p for p in base.iterdir() if p.name.startswith("STM32")):
+        rel = f"lib/stm32lib/CMSIS/{d.name}/Include/{d.name.lower()}.h"
+        text = _read(repo, rel)
+        parts = []
+        for field in ("MAIN", "SUB1", "SUB2"):
+            m = _search(rf"VERSION_{field}\s+\(\s*0x([0-9A-Fa-f]+)", text, rel)
+            parts.append(str(int(m.group(1), 16)))
+        subs.append(
+            {
+                "type": "library",
+                "group": "stm32lib",
+                "name": d.name,
+                "version": ".".join(parts),
+                "properties": [
+                    {"name": "submodule:path", "value": f"lib/stm32lib/CMSIS/{d.name}"},
+                    {"name": "version:source", "value": "in-tree"},
+                    {"name": "version:kind", "value": "cmsis-device"},
+                ],
+            }
+        )
+    if not subs:
+        raise ExtractorError("lib/stm32lib/CMSIS: no STM32* families found")
+    return subs
+
+
+def _sub_asf4(repo):
+    """One sub-component per ASF4 MCU tree, from its component-version.h.
+
+    The per-MCU versions genuinely disagree (samd21 1.2, same51 1.1,
+    samd51/same54 1.0), which is why the parent submodule carries no version.
+    """
+    base = repo / "lib/asf4"
+    if not base.is_dir():
+        raise ExtractorError("lib/asf4: directory missing")
+    subs = []
+    for d in sorted(p for p in base.iterdir() if (p / "include/component-version.h").is_file()):
+        rel = f"lib/asf4/{d.name}/include/component-version.h"
+        v = _defines(_read(repo, rel), ["COMPONENT_VERSION_STRING", "BUILD_NUMBER"], rel)
+        subs.append(
+            {
+                "type": "library",
+                "group": "asf4",
+                "name": d.name,
+                # Build number kept as semver build metadata: the version
+                # string alone ("1.0") is shared by samd51 and same54.
+                "version": f"{v['COMPONENT_VERSION_STRING']}+build.{v['BUILD_NUMBER']}",
+                "properties": [
+                    {"name": "submodule:path", "value": f"lib/asf4/{d.name}"},
+                    {"name": "version:source", "value": "in-tree"},
+                ],
+            }
+        )
+    if not subs:
+        raise ExtractorError("lib/asf4: no MCU trees with component-version.h found")
+    return subs
+
+
+SUBCOMPONENTS = {
+    "lib/stm32lib": _sub_stm32lib,
+    "lib/asf4": _sub_asf4,
+}
+
+
 def _vext_libm_dbl(repo):
     # "...copied from the musl library,\nv1.1.16, and, unless otherwise..."
     rel = "lib/libm_dbl/README"
@@ -517,11 +610,12 @@ EXTRACTORS = {
 #                  that file is BusyBox's build system (it still sets
 #                  "PROG := busybox"); the 1.1.0 there is BusyBox's, not
 #                  axTLS's.  No axTLS version is declared in-tree.
-# lib/stm32lib     A collection of ST HAL drivers for 14 MCU families, each
-#                  independently versioned; only F4 (V1.7.1) and F7 (V1.2.2)
-#                  declare a version at all, so no single value is meaningful.
-# lib/asf4         Same shape: per-MCU component-version.h files disagree
-#                  (samd21 1.2, same51 1.1, samd51/same54 1.0).
+# lib/stm32lib     A collection of ST CMSIS-device and HAL trees for 14 MCU
+#                  families, each independently versioned, so no single value
+#                  is meaningful.  Versions are emitted per family as nested
+#                  sub-components instead — see SUBCOMPONENTS.
+# lib/asf4         Same shape, same treatment: per-MCU component-version.h
+#                  files disagree (samd21 1.2, same51 1.1, samd51/same54 1.0).
 # lib/wiznet5k     ioLibrary_Driver ships no version marker; the VERSION
 #                  define in Internet/FTPServer/ftpd.h is the FTP server's.
 # lib/arduino-lib  No version file; README is licence text only.
@@ -531,8 +625,8 @@ EXTRACTORS = {
 #                  not a descendant of any of them, so neither an exact-tag
 #                  match nor "git describe" resolves it.
 #
-# Resolving stm32lib and asf4 properly would mean emitting per-family
-# sub-components rather than one component per submodule.
+# Of these, only alif-security-toolkit could plausibly be resolved in future,
+# if upstream ever tags the branch that MicroPython actually pins.
 
 
 # CPE 2.3 templates for vulnerability scanners that match against NVD/CPE
@@ -605,7 +699,7 @@ def resolve_version(repo, submod, sha, *, offline):
     return sha[:12], "git-sha"
 
 
-def build_component(submod, sha, version, source):
+def build_component(repo, submod, sha, version, source):
     name = submod["path"].split("/")[-1]
     properties = [
         {"name": "submodule:path", "value": submod["path"]},
@@ -630,6 +724,10 @@ def build_component(submod, sha, version, source):
     cpe_template = CPE_OVERRIDES.get(submod["path"])
     if cpe_template and source in ("in-tree", "git-tag"):
         component["cpe"] = cpe_template.format(version=_cpe_version(version))
+
+    sub_builder = SUBCOMPONENTS.get(submod["path"])
+    if sub_builder:
+        component["components"] = sub_builder(repo)
 
     return component
 
@@ -671,10 +769,10 @@ def main():
         print(f"resolving {s['path']}...", file=sys.stderr)
         try:
             version, source = resolve_version(repo, s, sha, offline=args.offline)
+            components.append(build_component(repo, s, sha, version, source))
         except ExtractorError as e:
             extractor_failures.append((s["path"], str(e)))
             continue
-        components.append(build_component(s, sha, version, source))
 
     for v in VENDORED:
         print(f"resolving {v['path']} (vendored: {v['name']})...", file=sys.stderr)
@@ -696,7 +794,12 @@ def main():
         sys.exit(1)
 
     if args.text:
-        text = "".join(f"{c['name']}={c['version']}\n" for c in components)
+        lines = []
+        for c in components:
+            lines.append(f"{c['name']}={c['version']}\n")
+            for sub in c.get("components", []):
+                lines.append(f"  {sub['name']}={sub['version']}\n")
+        text = "".join(lines)
     else:
         bom = {
             "bomFormat": "CycloneDX",
