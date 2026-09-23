@@ -1,0 +1,1443 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:20a07b2b-b9bb-4c95-812a-cd9a4b160c8a",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-10T22:08:26+00:00",
+    "tools": [
+      {
+        "vendor": "MicroPython",
+        "name": "tools/sbom.py"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "micropython",
+      "version": "v1.30.0-preview-64-g01761504e-dirty"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "CMSIS_5",
+      "version": "5.9.0",
+      "purl": "pkg:github/ARM-software/CMSIS_5@2b7495b8535bdcb306dac29b9ded4cfb679d7e5c",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ARM-software/CMSIS_5.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/CMSIS_5"
+        },
+        {
+          "name": "git:commit",
+          "value": "2b7495b8535bdcb306dac29b9ded4cfb679d7e5c"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "CMSIS_6",
+      "version": "v6.3.0",
+      "purl": "pkg:github/ARM-software/CMSIS_6@45dab712ad84f8cbbf2b7bfc089c19088507df6f",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ARM-software/CMSIS_6.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/CMSIS_6"
+        },
+        {
+          "name": "git:commit",
+          "value": "45dab712ad84f8cbbf2b7bfc089c19088507df6f"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "TARGET_KIT_PSE84_AI",
+      "version": "release-v1.3.0",
+      "purl": "pkg:github/Infineon/TARGET_KIT_PSE84_AI@41147b656e87c9c195f243c39d8f5575909982c8",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/TARGET_KIT_PSE84_AI.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/TARGET_KIT_PSE84_AI"
+        },
+        {
+          "name": "git:commit",
+          "value": "41147b656e87c9c195f243c39d8f5575909982c8"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "alif-security-toolkit",
+      "version": "63698efe8567",
+      "purl": "pkg:github/micropython/alif-security-toolkit@63698efe8567eed115fe620d5e5de75f460310d7",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/alif-security-toolkit.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/alif-security-toolkit"
+        },
+        {
+          "name": "git:commit",
+          "value": "63698efe8567eed115fe620d5e5de75f460310d7"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "alif_ensemble-cmsis-dfp",
+      "version": "1.3.4",
+      "purl": "pkg:github/alifsemi/alif_ensemble-cmsis-dfp@450314044646ad4b56c588b52b68eb6fe7d7caa7",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/alifsemi/alif_ensemble-cmsis-dfp.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/alif_ensemble-cmsis-dfp"
+        },
+        {
+          "name": "git:commit",
+          "value": "450314044646ad4b56c588b52b68eb6fe7d7caa7"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "arduino-lib",
+      "version": "8312406d6cd1",
+      "purl": "pkg:github/arduino/arduino-lib-mpy@8312406d6cd1a19683500f153b33fba7a8414127",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/arduino/arduino-lib-mpy.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/arduino-lib"
+        },
+        {
+          "name": "git:commit",
+          "value": "8312406d6cd1a19683500f153b33fba7a8414127"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "asf4",
+      "version": "84f56af13292",
+      "purl": "pkg:github/adafruit/asf4@84f56af13292d8f32c40acbd949bde698ddd4507",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/adafruit/asf4"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/asf4"
+        },
+        {
+          "name": "git:commit",
+          "value": "84f56af13292d8f32c40acbd949bde698ddd4507"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        },
+        {
+          "name": "git:branch",
+          "value": "circuitpython"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "group": "asf4",
+          "name": "samd21",
+          "version": "1.2+build.280",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/asf4/samd21"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "asf4",
+          "name": "samd51",
+          "version": "1.0+build.70",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/asf4/samd51"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "asf4",
+          "name": "same51",
+          "version": "1.1+build.129",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/asf4/same51"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "asf4",
+          "name": "same54",
+          "version": "1.0+build.67",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/asf4/same54"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "async-transfer",
+      "version": "release-v1.1.0",
+      "purl": "pkg:github/Infineon/async-transfer@d4d7f347f8b5e3a7c8feb6089fa2ba3b9aba822c",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/async-transfer.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/async-transfer"
+        },
+        {
+          "name": "git:commit",
+          "value": "d4d7f347f8b5e3a7c8feb6089fa2ba3b9aba822c"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "axtls",
+      "version": "531cab9c278c",
+      "purl": "pkg:github/micropython/axtls@531cab9c278c947d268bd4c94ecab9153a961b43",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/axtls.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/axtls"
+        },
+        {
+          "name": "git:commit",
+          "value": "531cab9c278c947d268bd4c94ecab9153a961b43"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "berkeley-db-1.xx",
+      "version": "1.85",
+      "purl": "pkg:github/micropython/berkeley-db-1.xx@0f3bb6947c2f57233916dccd7bb425d7bf86e5a6",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/berkeley-db-1.xx"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/berkeley-db-1.xx"
+        },
+        {
+          "name": "git:commit",
+          "value": "0f3bb6947c2f57233916dccd7bb425d7bf86e5a6"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "btstack",
+      "version": "v1.5.6.2",
+      "purl": "pkg:github/bluekitchen/btstack@77e752abd6a0992334047a48038a5a3960e5c6bc",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/bluekitchen/btstack.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/btstack"
+        },
+        {
+          "name": "git:commit",
+          "value": "77e752abd6a0992334047a48038a5a3960e5c6bc"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "core-lib",
+      "version": "release-v1.7.0",
+      "purl": "pkg:github/Infineon/core-lib@b2a7ce7e3a96265358cc3512c883befa24d0da06",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/core-lib.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/core-lib"
+        },
+        {
+          "name": "git:commit",
+          "value": "b2a7ce7e3a96265358cc3512c883befa24d0da06"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "crypto-algorithms",
+      "version": "unknown",
+      "purl": "pkg:github/B-Con/crypto-algorithms@unknown",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/B-Con/crypto-algorithms"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/crypto-algorithms"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-unknown"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "cyw43-driver",
+      "version": "1.1.0",
+      "purl": "pkg:github/georgerobotics/cyw43-driver@055d64274b014dd7b1c2fc94d26e8a18face7124",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/georgerobotics/cyw43-driver.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/cyw43-driver"
+        },
+        {
+          "name": "git:commit",
+          "value": "055d64274b014dd7b1c2fc94d26e8a18face7124"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "fsp",
+      "version": "4.4.0",
+      "purl": "pkg:github/renesas/fsp@e78939d32d1ccea9f0ba8bb42c51aceffd386b9b",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/renesas/fsp.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/fsp"
+        },
+        {
+          "name": "git:commit",
+          "value": "e78939d32d1ccea9f0ba8bb42c51aceffd386b9b"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libffi",
+      "version": "3.4.6",
+      "purl": "pkg:github/libffi/libffi@3d0ce1e6fcf19f853894862abcbac0ae78a7be60",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/libffi/libffi"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/libffi"
+        },
+        {
+          "name": "git:commit",
+          "value": "3d0ce1e6fcf19f853894862abcbac0ae78a7be60"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ],
+      "cpe": "cpe:2.3:a:libffi_project:libffi:3.4.6:*:*:*:*:*:*:*"
+    },
+    {
+      "type": "library",
+      "name": "libhydrogen",
+      "version": "1.0.0",
+      "purl": "pkg:github/jedisct1/libhydrogen@173f728ee2c627f80fd0322473e16467f259558d",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jedisct1/libhydrogen.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/libhydrogen"
+        },
+        {
+          "name": "git:commit",
+          "value": "173f728ee2c627f80fd0322473e16467f259558d"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libm",
+      "version": "unknown",
+      "purl": "pkg:github/32bitmicro/newlib-nano-2@unknown",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/32bitmicro/newlib-nano-2"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/libm"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-unknown"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libm-dbl",
+      "version": "1.1.16",
+      "purl": "pkg:generic/libm-dbl@1.1.16?vcs_url=https://musl.libc.org",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://musl.libc.org"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/libm_dbl"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libmetal",
+      "version": "1.5.0",
+      "purl": "pkg:github/OpenAMP/libmetal@0cb7d293a7f25394a06847a28d0f0ace9862936e",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/OpenAMP/libmetal.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/libmetal"
+        },
+        {
+          "name": "git:commit",
+          "value": "0cb7d293a7f25394a06847a28d0f0ace9862936e"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "littlefs-lfs1",
+      "version": "1.7",
+      "purl": "pkg:github/littlefs-project/littlefs@1.7",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/littlefs-project/littlefs"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/littlefs"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "littlefs-lfs2",
+      "version": "2.11",
+      "purl": "pkg:github/littlefs-project/littlefs@2.11",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/littlefs-project/littlefs"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/littlefs"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "lwip",
+      "version": "2.2.1",
+      "purl": "pkg:github/lwip-tcpip/lwip@77dcd25a72509eb83f72b033d219b1d40cd8eb95",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/lwip-tcpip/lwip.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/lwip"
+        },
+        {
+          "name": "git:commit",
+          "value": "77dcd25a72509eb83f72b033d219b1d40cd8eb95"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ],
+      "cpe": "cpe:2.3:a:lwip_project:lwip:2.2.1:*:*:*:*:*:*:*"
+    },
+    {
+      "type": "library",
+      "name": "mbedtls",
+      "version": "3.6.6",
+      "purl": "pkg:github/Mbed-TLS/mbedtls@0bebf8b8c7f07abe3571ded48a11aa907a1ffb20",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ARMmbed/mbedtls.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/mbedtls"
+        },
+        {
+          "name": "git:commit",
+          "value": "0bebf8b8c7f07abe3571ded48a11aa907a1ffb20"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ],
+      "cpe": "cpe:2.3:a:arm:mbed_tls:3.6.6:*:*:*:*:*:*:*"
+    },
+    {
+      "type": "library",
+      "name": "micropython-lib",
+      "version": "v1.29.0",
+      "purl": "pkg:github/micropython/micropython-lib@ee4bb8ff139e24c42b739935fbd8ec7c4d061e02",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/micropython-lib.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/micropython-lib"
+        },
+        {
+          "name": "git:commit",
+          "value": "ee4bb8ff139e24c42b739935fbd8ec7c4d061e02"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mtb-dsl-pse8xxgp",
+      "version": "release-v1.3.0",
+      "purl": "pkg:github/Infineon/mtb-dsl-pse8xxgp@15d032bd4cd1090a10f544a881ae7d0aa4869caf",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/mtb-dsl-pse8xxgp.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/mtb-dsl-pse8xxgp"
+        },
+        {
+          "name": "git:commit",
+          "value": "15d032bd4cd1090a10f544a881ae7d0aa4869caf"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mtb-ipc",
+      "version": "latest-v1.X",
+      "purl": "pkg:github/Infineon/mtb-ipc@760f4772bd4b37abe08062d7229de91e9a23a54f",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/mtb-ipc.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/mtb-ipc"
+        },
+        {
+          "name": "git:commit",
+          "value": "760f4772bd4b37abe08062d7229de91e9a23a54f"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mtb-srf",
+      "version": "release-v1.1.1",
+      "purl": "pkg:github/Infineon/mtb-srf@3c43b49a7e001836d63b60daa19d2616396e014a",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/mtb-srf.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/mtb-srf"
+        },
+        {
+          "name": "git:commit",
+          "value": "3c43b49a7e001836d63b60daa19d2616396e014a"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mynewt-nimble",
+      "version": "1.4.0",
+      "purl": "pkg:github/micropython/mynewt-nimble@42849560ba7906f023f61e5f7ff3709ba2c1dfca",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/mynewt-nimble.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/mynewt-nimble"
+        },
+        {
+          "name": "git:commit",
+          "value": "42849560ba7906f023f61e5f7ff3709ba2c1dfca"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "nrfx",
+      "version": "v3.14.0",
+      "purl": "pkg:github/NordicSemiconductor/nrfx@11f57e578c7feea13f21c79ea0efab2630ac68c7",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/NordicSemiconductor/nrfx.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/nrfx"
+        },
+        {
+          "name": "git:commit",
+          "value": "11f57e578c7feea13f21c79ea0efab2630ac68c7"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "nxp_driver",
+      "version": "MCUX_2.16.100",
+      "purl": "pkg:github/micropython/nxp_driver@a298e8a3cad2df737de020bbeac4ee2147d189ca",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/nxp_driver.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/nxp_driver"
+        },
+        {
+          "name": "git:commit",
+          "value": "a298e8a3cad2df737de020bbeac4ee2147d189ca"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "oofatfs",
+      "version": "R0.13c-rev86604",
+      "purl": "pkg:github/micropython/oofatfs@R0.13c-rev86604",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/oofatfs"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/oofatfs"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "open-amp",
+      "version": "1.5.0",
+      "purl": "pkg:github/OpenAMP/open-amp@1904dee18da85400e72b8f55c5c99e872a486573",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/OpenAMP/open-amp.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/open-amp"
+        },
+        {
+          "name": "git:commit",
+          "value": "1904dee18da85400e72b8f55c5c99e872a486573"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pico-sdk",
+      "version": "2.3.0",
+      "purl": "pkg:github/raspberrypi/pico-sdk@98a542c1a62fb549ffb5d66a3e5892b06276b670",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/raspberrypi/pico-sdk.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/pico-sdk"
+        },
+        {
+          "name": "git:commit",
+          "value": "98a542c1a62fb549ffb5d66a3e5892b06276b670"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "protobuf-c",
+      "version": "1.4.1",
+      "purl": "pkg:github/protobuf-c/protobuf-c@abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/protobuf-c/protobuf-c.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/protobuf-c"
+        },
+        {
+          "name": "git:commit",
+          "value": "abc67a11c6db271bedbb9f58be85d6f4e2ea8389"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ],
+      "cpe": "cpe:2.3:a:protobuf-c_project:protobuf-c:1.4.1:*:*:*:*:*:*:*"
+    },
+    {
+      "type": "library",
+      "name": "re1.5",
+      "version": "1.5",
+      "purl": "pkg:github/pfalcon/re1.5@1.5",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/pfalcon/re1.5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/re1.5"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-in-tree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "se-rt-services-utils",
+      "version": "release-v1.2.0",
+      "purl": "pkg:github/Infineon/se-rt-services-utils@5da80102ec10b8a3e1676aed02073f7f9dcae3f5",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/se-rt-services-utils.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/se-rt-services-utils"
+        },
+        {
+          "name": "git:commit",
+          "value": "5da80102ec10b8a3e1676aed02073f7f9dcae3f5"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "serial-memory",
+      "version": "release-v3.1.0",
+      "purl": "pkg:github/Infineon/serial-memory@ae90b884dd16959230c33e5368d18a09bee0df72",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Infineon/serial-memory.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/psoc-edge/serial-memory"
+        },
+        {
+          "name": "git:commit",
+          "value": "ae90b884dd16959230c33e5368d18a09bee0df72"
+        },
+        {
+          "name": "version:source",
+          "value": "git-tag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "stm32lib",
+      "version": "07619754261b",
+      "purl": "pkg:github/micropython/stm32lib@07619754261b571fb2f7c9f36ab94c203880d9fb",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/stm32lib"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/stm32lib"
+        },
+        {
+          "name": "git:commit",
+          "value": "07619754261b571fb2f7c9f36ab94c203880d9fb"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        },
+        {
+          "name": "git:branch",
+          "value": "work-F0-1.9.0+F4-1.16.0+F7-1.7.0+G0-1.5.1+G4-1.3.0+H7-1.6.0+L0-1.11.2+L1-1.10.3+L4-1.17.0+WB-1.10.0+WL-1.1.0"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32F0xx",
+          "version": "2.3.3",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32F0xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32F4xx",
+          "version": "2.6.1",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32F4xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32F7xx",
+          "version": "1.2.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32F7xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32G0xx",
+          "version": "1.4.2",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32G0xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32G4xx",
+          "version": "1.2.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32G4xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32H5xx",
+          "version": "1.0.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32H5xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32H7xx",
+          "version": "1.10.3",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32H7xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32L0xx",
+          "version": "1.9.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32L0xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32L1xx",
+          "version": "2.3.2",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32L1xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32L4xx",
+          "version": "1.7.1",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32L4xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32N6xx",
+          "version": "1.2.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32N6xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32U5xx",
+          "version": "1.4.2",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32U5xx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32WBxx",
+          "version": "1.12.3",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32WBxx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "group": "stm32lib",
+          "name": "STM32WLxx",
+          "version": "1.1.0",
+          "properties": [
+            {
+              "name": "submodule:path",
+              "value": "lib/stm32lib/CMSIS/STM32WLxx"
+            },
+            {
+              "name": "version:source",
+              "value": "in-tree"
+            },
+            {
+              "name": "version:kind",
+              "value": "cmsis-device"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tinyusb",
+      "version": "0.21.0",
+      "purl": "pkg:github/micropython/tinyusb@b549ac1d84cbbe550c9590951e2290098b3fb16c",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/micropython/tinyusb.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/tinyusb"
+        },
+        {
+          "name": "git:commit",
+          "value": "b549ac1d84cbbe550c9590951e2290098b3fb16c"
+        },
+        {
+          "name": "version:source",
+          "value": "in-tree"
+        }
+      ],
+      "cpe": "cpe:2.3:a:tinyusb_project:tinyusb:0.21.0:*:*:*:*:*:*:*"
+    },
+    {
+      "type": "library",
+      "name": "uzlib",
+      "version": "unknown",
+      "purl": "pkg:github/pfalcon/uzlib@unknown",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/pfalcon/uzlib"
+        }
+      ],
+      "properties": [
+        {
+          "name": "vendored:path",
+          "value": "lib/uzlib"
+        },
+        {
+          "name": "version:source",
+          "value": "vendored-unknown"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "wiznet5k",
+      "version": "0803fc519ad7",
+      "purl": "pkg:github/andrewleech/wiznet_ioLibrary_Driver@0803fc519ad7227e841287fb3638d6c8b2f111a1",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/andrewleech/wiznet_ioLibrary_Driver.git"
+        }
+      ],
+      "properties": [
+        {
+          "name": "submodule:path",
+          "value": "lib/wiznet5k"
+        },
+        {
+          "name": "git:commit",
+          "value": "0803fc519ad7227e841287fb3638d6c8b2f111a1"
+        },
+        {
+          "name": "version:source",
+          "value": "git-sha"
+        }
+      ]
+    }
+  ]
+}
