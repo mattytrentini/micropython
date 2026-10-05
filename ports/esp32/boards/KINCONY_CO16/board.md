@@ -35,8 +35,8 @@ Reset, then release Download. Do not use the Tuya configuration button.
 | MicroPython interface | Connection | GPIOs |
 | --- | --- | --- |
 | `I2C(0)` | On-board I2C devices | SDA 8, SCL 18 |
-| `SPI(1)` | Display, SD card, MAX31865, optional LoRa | SCK 11, MOSI 10, MISO 12 |
-| `SPI(2)` | W5500 Ethernet | SCK 1, MOSI 2, MISO 41 |
+| `SPI(1)` | W5500 Ethernet | SCK 1, MOSI 2, MISO 41 |
+| `SPI(2)` | Display, SD card, MAX31865, optional LoRa | SCK 11, MOSI 10, MISO 12 |
 | `UART(0)` | Optional SIM7600 or KNX module | TX 48, RX 47 |
 | `UART(1)` | RS485 | TX 39, RX 38 |
 | `UART(2)` | Tuya module | TX 16, RX 17 |
@@ -79,7 +79,7 @@ import network
 from machine import Pin, SPI
 
 lan = network.LAN(
-    spi=SPI(2),
+    spi=SPI(1),
     phy_type=network.PHY_W5500,
     phy_addr=0,
     cs=Pin("ETH_CS"),
@@ -106,7 +106,9 @@ reset/interrupt, and the manufacturer lists GPIO21 for both the PT100 multiplexe
 S2 and MAX31865 ready signal. These aliases do not imply independent signals.
 GPIO0 is both the Download button and the display DC signal.
 
-The SD card defaults are provided for `machine.SDCard(slot=2)`. The ESP32 SDCard
-SPI driver owns that SPI host exclusively, so it cannot run concurrently with
-`SPI(1)` peripherals. Use a separate SPI SD-card driver if the application needs
-to share the bus with the display, MAX31865 or LoRa.
+The SD card defaults are provided for `machine.SDCard(slot=2)`, which uses the
+ESP32-S3 SPI3 host (the same host as `SPI(2)`). The ESP32 SDCard SPI driver owns
+that SPI host exclusively, so it cannot run concurrently with `SPI(2)`
+peripherals. Use a separate SPI SD-card driver if the application needs to share
+the bus with the display, MAX31865 or LoRa. Ethernet uses the other host,
+`SPI(1)`, so it can remain active while the SD card is in use.

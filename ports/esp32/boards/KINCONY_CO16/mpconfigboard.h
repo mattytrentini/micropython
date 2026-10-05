@@ -7,15 +7,16 @@
 #define MICROPY_HW_I2C0_SCL                 (18)
 #define MICROPY_HW_I2C0_SDA                 (8)
 
-// Shared SPI bus: display, SD card, MAX31865 and optional LoRa module.
-#define MICROPY_HW_SPI1_MOSI                (10)
-#define MICROPY_HW_SPI1_MISO                (12)
-#define MICROPY_HW_SPI1_SCK                 (11)
-
 // W5500 Ethernet has a separate SPI bus.
-#define MICROPY_HW_SPI2_MOSI                (2)
-#define MICROPY_HW_SPI2_MISO                (41)
-#define MICROPY_HW_SPI2_SCK                 (1)
+#define MICROPY_HW_SPI1_MOSI                (2)
+#define MICROPY_HW_SPI1_MISO                (41)
+#define MICROPY_HW_SPI1_SCK                 (1)
+
+// Shared SPI bus: display, SD card, MAX31865 and optional LoRa module.
+// SDCard(slot=2) uses SPI3_HOST, the same host as SPI(2).
+#define MICROPY_HW_SPI2_MOSI                (10)
+#define MICROPY_HW_SPI2_MISO                (12)
+#define MICROPY_HW_SPI2_SCK                 (11)
 
 #define MICROPY_HW_SDCARD_SPI_MOSI          (10)
 #define MICROPY_HW_SDCARD_SPI_MISO          (12)
