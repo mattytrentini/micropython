@@ -1,0 +1,23 @@
+{
+    "deploy": [
+        "../deploy_flashmode.md",
+        "../deploy_nativeusb.md"
+    ],
+    "deploy_options": {
+        "flash_offset": "0"
+    },
+    "docs": "",
+    "features": [
+        "BLE",
+        "Ethernet",
+        "External Flash",
+        "External RAM",
+        "USB-C",
+        "WiFi"
+    ],
+    "images": [],
+    "mcu": "esp32s3",
+    "product": "CO16",
+    "url": "https://www.kincony.com/esp32-s3-16-channel-analog-input-smart-controller.html",
+    "vendor": "KinCony"
+}
