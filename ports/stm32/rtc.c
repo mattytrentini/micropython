@@ -970,4 +970,265 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &pyb_rtc_locals_dict
     );
 
+#else
+
+// STM32C5 RTC calendar support. RTCSEL is write-once after RTC-domain reset;
+// only choose the board default while it is still NONE. Never use the HAL RCC
+// selector helper here because it resets the backup domain when changing it.
+RTC_HandleTypeDef RTCHandle;
+static bool rtc_init_ok;
+static bool rtc_calendar_ready;
+static uint32_t rtc_clock_source;
+
+static bool rtc_wait_clock_ready(uint32_t source) {
+    uint32_t start = HAL_GetTick();
+    while (HAL_GetTick() - start < LSE_STARTUP_TIMEOUT) {
+        if ((source == LL_RCC_RTC_CLKSOURCE_LSE && LL_RCC_LSE_IsReady())
+            || (source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady())
+            || (source == LL_RCC_RTC_CLKSOURCE_HSE_DIV && LL_RCC_HSE_IsReady())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void rtc_init_start(bool force_init) {
+    rtc_init_ok = false;
+    rtc_calendar_ready = false;
+    (void)force_init;
+    RTCHandle.Instance = RTC;
+    HAL_PWR_DisableRTCDomainWriteProtection();
+
+    // Read and preserve the source selected by boot firmware or an earlier run.
+    uint32_t source = HAL_RCC_RTC_GetKernelClkSource();
+    if (source == LL_RCC_RTC_CLKSOURCE_NONE) {
+        // The RTCSEL reset value can be written once without resetting the
+        // backup domain; subsequent source changes require a domain reset.
+        #if MICROPY_HW_RTC_USE_LSE
+        uint32_t initial_source = LL_RCC_RTC_CLKSOURCE_LSE;
+        LL_RCC_LSE_Enable();
+        #else
+        uint32_t initial_source = LL_RCC_RTC_CLKSOURCE_LSI;
+        LL_RCC_LSI_Enable();
+        #endif
+        uint32_t start = HAL_GetTick();
+        while (!((initial_source == LL_RCC_RTC_CLKSOURCE_LSE && LL_RCC_LSE_IsReady())
+            || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))
+            && HAL_GetTick() - start < LSE_STARTUP_TIMEOUT) {
+        }
+        if (!((initial_source == LL_RCC_RTC_CLKSOURCE_LSE && LL_RCC_LSE_IsReady())
+            || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))) {
+            HAL_PWR_EnableRTCDomainWriteProtection();
+            return;
+        }
+        LL_RCC_SetRTCClockSource(initial_source);
+        source = initial_source;
+    } else if (source == LL_RCC_RTC_CLKSOURCE_LSE) {
+        LL_RCC_LSE_Enable();
+    } else if (source == LL_RCC_RTC_CLKSOURCE_LSI) {
+        LL_RCC_LSI_Enable();
+    } else if (source != LL_RCC_RTC_CLKSOURCE_HSE_DIV) {
+        HAL_PWR_EnableRTCDomainWriteProtection();
+        return;
+    }
+
+    rtc_clock_source = source;
+
+    if (!rtc_wait_clock_ready(source)) {
+        HAL_PWR_EnableRTCDomainWriteProtection();
+        return;
+    }
+    LL_RCC_EnableRTC();
+    HAL_RCC_RTCAPB_EnableClock();
+    rtc_init_ok = true;
+    HAL_PWR_EnableRTCDomainWriteProtection();
+}
+
+void rtc_init_finalise(void) {
+    if (!rtc_init_ok) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC clock unavailable"));
+    }
+    if (rtc_calendar_ready) {
+        return;
+    }
+    if (HAL_RTC_CALENDAR_IsInitialized() == HAL_RTC_CALENDAR_NOT_INITIALIZED) {
+        HAL_PWR_DisableRTCDomainWriteProtection();
+        HAL_RTC_DisableWriteProtection();
+        if (HAL_RTC_EnterInitMode() != HAL_OK) {
+            HAL_RTC_EnableWriteProtection();
+            HAL_PWR_EnableRTCDomainWriteProtection();
+            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC init-mode timeout"));
+        }
+        hal_rtc_config_t rtc_config = {
+            .mode = HAL_RTC_MODE_BCD,
+            .asynch_prediv = 127,
+            .synch_prediv = rtc_clock_source == LL_RCC_RTC_CLKSOURCE_LSI ? 249 : 255,
+            .bcd_update = HAL_RTC_BCD_UPDATE_8BITS,
+        };
+        hal_rtc_calendar_config_t config = {
+            .hour_format = HAL_RTC_CALENDAR_HOUR_FORMAT_24,
+            .bypass_shadow_register = HAL_RTC_CALENDAR_SHADOW_REG_KEEP,
+        };
+        hal_rtc_date_t date = {
+            .wday = HAL_RTC_WEEKDAY_SATURDAY,
+            .mon = HAL_RTC_MONTH_JANUARY,
+            .mday = 1,
+            .year = 0,
+        };
+        hal_rtc_time_t time = {
+            .am_pm = HAL_RTC_TIME_FORMAT_AM_24H,
+            .hour = 0,
+            .min = 0,
+            .sec = 0,
+        };
+        hal_status_t status = rtc_clock_source == LL_RCC_RTC_CLKSOURCE_HSE_DIV
+            ? HAL_ERROR : HAL_RTC_SetConfig(&rtc_config);
+        if (status == HAL_OK) {
+            status = HAL_RTC_CALENDAR_SetConfig(&config);
+        }
+        if (status == HAL_OK) {
+            status = HAL_RTC_CALENDAR_SetDateTime(&date, &time);
+        }
+        HAL_RTC_ExitInitMode();
+        HAL_RTC_EnableWriteProtection();
+        HAL_PWR_EnableRTCDomainWriteProtection();
+        if (status != HAL_OK) {
+            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("unsupported RTC clock configuration"));
+        }
+    }
+    else {
+        hal_rtc_config_t rtc_config;
+        HAL_RTC_GetConfig(&rtc_config);
+        if (rtc_config.mode != HAL_RTC_MODE_BCD) {
+            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC calendar mode unsupported"));
+        }
+    }
+    rtc_calendar_ready = true;
+}
+
+static hal_status_t rtc_set_datetime(const hal_rtc_date_t *date, const hal_rtc_time_t *time) {
+    HAL_PWR_DisableRTCDomainWriteProtection();
+    HAL_RTC_DisableWriteProtection();
+    hal_status_t status = HAL_RTC_EnterInitMode();
+    if (status == HAL_OK) {
+        status = HAL_RTC_CALENDAR_SetDateTime(date, time);
+        hal_status_t exit_status = HAL_RTC_ExitInitMode();
+        if (status == HAL_OK) {
+            status = exit_status;
+        }
+    }
+    HAL_RTC_EnableWriteProtection();
+    HAL_PWR_EnableRTCDomainWriteProtection();
+    return status;
+}
+
+
+typedef struct _pyb_rtc_obj_t {
+    mp_obj_base_t base;
+} pyb_rtc_obj_t;
+
+static const pyb_rtc_obj_t pyb_rtc_obj = {{&pyb_rtc_type}};
+
+static mp_obj_t pyb_rtc_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    (void)type;
+    (void)args;
+    mp_arg_check_num(n_args, n_kw, 0, 0, false);
+    return MP_OBJ_FROM_PTR(&pyb_rtc_obj);
+}
+
+static mp_obj_t pyb_rtc_init(mp_obj_t self_in) {
+    (void)self_in;
+    rtc_init_start(false);
+    rtc_init_finalise();
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(pyb_rtc_init_obj, pyb_rtc_init);
+
+static mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
+    rtc_init_finalise();
+    if (n_args == 1) {
+        hal_rtc_date_t date;
+        hal_rtc_time_t time;
+        if (HAL_RTC_CALENDAR_GetDateTime(&date, &time) != HAL_OK) {
+            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC read failed"));
+        }
+        hal_rtc_calendar_config_t calendar;
+        HAL_RTC_CALENDAR_GetConfig(&calendar);
+        uint32_t hour = time.hour;
+        if (calendar.hour_format == HAL_RTC_CALENDAR_HOUR_FORMAT_AMPM) {
+            if (time.am_pm == HAL_RTC_TIME_FORMAT_PM) {
+                hour = (hour == 12) ? 12 : hour + 12;
+            } else if (hour == 12) {
+                hour = 0;
+            }
+        }
+        hal_rtc_config_t rtc_config;
+        HAL_RTC_GetConfig(&rtc_config);
+        uint32_t subseconds = rtc_config.synch_prediv - time.subsec;
+        uint32_t microseconds = (uint64_t)subseconds * 1000000 / (rtc_config.synch_prediv + 1);
+        mp_obj_t tuple[8] = {
+            mp_obj_new_int(2000 + date.year),
+            mp_obj_new_int(date.mon),
+            mp_obj_new_int(date.mday),
+            mp_obj_new_int(date.wday),
+            mp_obj_new_int(hour),
+            mp_obj_new_int(time.min),
+            mp_obj_new_int(time.sec),
+            mp_obj_new_int(microseconds),
+        };
+        return mp_obj_new_tuple(8, tuple);
+    }
+
+    mp_obj_t *items;
+    mp_obj_get_array_fixed_n(args[1], 8, &items);
+    mp_int_t year = mp_obj_get_int(items[0]);
+    mp_int_t hour = mp_obj_get_int(items[4]);
+    hal_rtc_date_t date = {
+        .wday = mp_obj_get_int(items[3]),
+        .mon = mp_obj_get_int(items[1]),
+        .mday = mp_obj_get_int(items[2]),
+        .year = year - 2000,
+    };
+    hal_rtc_time_t time = {
+        .am_pm = HAL_RTC_TIME_FORMAT_AM_24H,
+        .hour = hour,
+        .min = mp_obj_get_int(items[5]),
+        .sec = mp_obj_get_int(items[6]),
+    };
+    mp_int_t month = date.mon;
+    mp_int_t day = date.mday;
+    mp_int_t weekday = date.wday;
+    if (year < 2000 || year > 2099 || month < 1 || month > 12
+        || day < 1 || weekday < 1 || weekday > 7 || hour < 0 || hour > 23
+        || time.min > 59 || time.sec > 59
+        || day > timeutils_days_in_month(year, month)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid RTC datetime"));
+    }
+    hal_rtc_calendar_config_t calendar;
+    HAL_RTC_CALENDAR_GetConfig(&calendar);
+    if (calendar.hour_format == HAL_RTC_CALENDAR_HOUR_FORMAT_AMPM) {
+        time.am_pm = hour >= 12 ? HAL_RTC_TIME_FORMAT_PM : HAL_RTC_TIME_FORMAT_AM_24H;
+        time.hour = hour % 12 == 0 ? 12 : hour % 12;
+    }
+    if (rtc_set_datetime(&date, &time) != HAL_OK) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid RTC datetime"));
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_datetime_obj, 1, 2, pyb_rtc_datetime);
+
+static const mp_rom_map_elem_t pyb_rtc_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&pyb_rtc_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_datetime), MP_ROM_PTR(&pyb_rtc_datetime_obj) },
+};
+static MP_DEFINE_CONST_DICT(pyb_rtc_locals_dict, pyb_rtc_locals_dict_table);
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    pyb_rtc_type,
+    MP_QSTR_RTC,
+    MP_TYPE_FLAG_NONE,
+    make_new, pyb_rtc_make_new,
+    locals_dict, &pyb_rtc_locals_dict
+    );
+
 #endif // !STM32C5

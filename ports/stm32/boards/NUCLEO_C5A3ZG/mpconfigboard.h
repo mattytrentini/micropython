@@ -4,7 +4,9 @@
 #define MICROPY_PY_PYB_LEGACY               (0)
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
 #define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
-#define MICROPY_HW_ENABLE_RTC               (0)
+#define MICROPY_HW_ENABLE_RTC               (1)
+// The Nucleo-64 board includes a 32.768 kHz LSE crystal.
+#define MICROPY_HW_RTC_USE_LSE              (1)
 #define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_ENABLE_ADC               (0) // TODO: enable once ADC driver adapted
 #define MICROPY_HW_ENABLE_DAC               (0) // TODO: enable once DAC driver adapted

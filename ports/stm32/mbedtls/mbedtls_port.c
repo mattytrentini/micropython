@@ -38,8 +38,11 @@ time_t stm32_rtctime_seconds(time_t *timer) {
     rtc_init_finalise();
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
-    HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef time_status = HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef date_status = HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    if (time_status != HAL_OK || date_status != HAL_OK) {
+        return (time_t)-1;
+    }
     return timeutils_seconds_since_epoch(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
 }
 

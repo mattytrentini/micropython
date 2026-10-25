@@ -33,8 +33,11 @@ MP_WEAK DWORD get_fattime(void) {
     rtc_init_finalise();
     RTC_TimeTypeDef time;
     RTC_DateTypeDef date;
-    HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef time_status = HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef date_status = HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    if (time_status != HAL_OK || date_status != HAL_OK) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC read failed"));
+    }
     return ((2000 + date.Year - 1980) << 25) | ((date.Month) << 21) | ((date.Date) << 16) | ((time.Hours) << 11) | ((time.Minutes) << 5) | (time.Seconds / 2);
     #else
     // Jan 1st, 2018 at midnight. Not sure what timezone.

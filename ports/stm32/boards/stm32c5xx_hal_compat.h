@@ -33,7 +33,6 @@
 #ifndef MICROPY_INCLUDED_STM32C5XX_HAL_COMPAT_H
 #define MICROPY_INCLUDED_STM32C5XX_HAL_COMPAT_H
 
-#include <string.h>
 
 // Include HAL and LL headers needed by MicroPython.
 // The C5 HAL uses stm32_hal.h with USE_HAL_*_MODULE guards, but MicroPython
@@ -250,18 +249,45 @@ typedef struct {
 #define RTC_FORMAT_BIN  0
 #define RTC_FORMAT_BCD  1
 
-// Stub RTC functions - zero-fill results to avoid uninitialized warnings
+// RTC calendar compatibility adapters. The C5 calendar is accessed through its
+// HAL calendar API; the legacy-shaped structures are kept for shared consumers.
 static inline hal_status_t HAL_RTC_GetTime(RTC_HandleTypeDef *hrtc, RTC_TimeTypeDef *sTime, uint32_t Format) {
     (void)hrtc;
-    (void)Format;
-    memset(sTime, 0, sizeof(*sTime));
-    return HAL_ERROR; // TODO: implement via LL
+    if (Format != RTC_FORMAT_BIN) {
+        return HAL_ERROR;
+    }
+    hal_rtc_time_t time;
+    hal_status_t status = HAL_RTC_CALENDAR_GetTime(&time);
+    if (status == HAL_OK) {
+        sTime->Hours = time.hour;
+        hal_rtc_calendar_config_t calendar;
+        HAL_RTC_CALENDAR_GetConfig(&calendar);
+        if (calendar.hour_format == HAL_RTC_CALENDAR_HOUR_FORMAT_AMPM) {
+            sTime->Hours = time.am_pm == HAL_RTC_TIME_FORMAT_PM
+                ? (time.hour == 12 ? 12 : time.hour + 12)
+                : (time.hour == 12 ? 0 : time.hour);
+        }
+        sTime->Minutes = time.min;
+        sTime->Seconds = time.sec;
+        sTime->TimeFormat = time.am_pm;
+        sTime->SubSeconds = time.subsec;
+    }
+    return status;
 }
 static inline hal_status_t HAL_RTC_GetDate(RTC_HandleTypeDef *hrtc, RTC_DateTypeDef *sDate, uint32_t Format) {
     (void)hrtc;
-    (void)Format;
-    memset(sDate, 0, sizeof(*sDate));
-    return HAL_ERROR; // TODO: implement via LL
+    if (Format != RTC_FORMAT_BIN) {
+        return HAL_ERROR;
+    }
+    hal_rtc_date_t date;
+    hal_status_t status = HAL_RTC_CALENDAR_GetDate(&date);
+    if (status == HAL_OK) {
+        sDate->WeekDay = date.wday;
+        sDate->Month = date.mon;
+        sDate->Date = date.mday;
+        sDate->Year = date.year;
+    }
+    return status;
 }
 
 // ---------------------------------------------------------------------------

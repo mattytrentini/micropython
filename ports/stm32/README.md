@@ -195,8 +195,19 @@ STM32C5 peripherals
 
 External GPIO interrupts are available through `machine.Pin.irq()` and
 `pyb.ExtInt`, with rising/falling edges and hard or scheduled callbacks.
-Only one GPIO port can own each numbered EXTI line at a time. Internal
-RTC and other non-GPIO EXTI sources are not enabled on C5.
+Only one GPIO port can own each numbered EXTI line at a time. RTC interrupts
+and other non-GPIO EXTI sources are not enabled on C5.
+
+`pyb.RTC` exposes calendar initialization and `datetime()` read/write on both
+C5 boards. The XIAO and Nucleo board hardware provide a 32.768 kHz LSE crystal.
+Startup adopts an existing RTC clock source; if RTCSEL is still unset it selects
+the board-configured source with the one-time initial selector write. It never
+resets the RTC backup domain or changes an already-selected source. The calendar
+is initialized to 2000-01-01 only when the RTC reports that its calendar has
+never been initialized. Existing calendar contents and TAMP backup registers
+are preserved. The Python `time` module's calendar and wall-clock functions use
+this RTC; `time.time()` and `time.time_ns()` use the MicroPython epoch of 2000.
+RTC wakeup and calibration methods are not exposed on C5.
 
 `pyb.Timer` supports counter/update callbacks, PWM and output compare,
 input capture, encoder modes, and advanced complementary outputs/deadtime.

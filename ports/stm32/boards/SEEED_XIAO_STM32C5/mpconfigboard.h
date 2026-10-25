@@ -6,7 +6,9 @@
 #define MICROPY_HW_HAS_FLASH                (0)
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
 #define MICROPY_HW_HAS_SWITCH               (0)
-#define MICROPY_HW_ENABLE_RTC               (0)
+#define MICROPY_HW_ENABLE_RTC               (1)
+// Seeed's board schematic includes a 32.768 kHz RTC crystal.
+#define MICROPY_HW_RTC_USE_LSE              (1)
 #define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_ENABLE_ADC               (0)
 #define MICROPY_HW_ENABLE_DAC               (0)

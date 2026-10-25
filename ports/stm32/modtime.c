@@ -25,6 +25,7 @@
  */
 
 #include "py/obj.h"
+#include "py/runtime.h"
 #include "shared/timeutils/timeutils.h"
 #include "rtc.h"
 
@@ -35,8 +36,11 @@ static void mp_time_localtime_get(timeutils_struct_time_t *tm) {
     rtc_init_finalise();
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
-    HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef time_status = HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef date_status = HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    if (time_status != HAL_OK || date_status != HAL_OK) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC read failed"));
+    }
     tm->tm_year = 2000 + date.Year;
     tm->tm_mon = date.Month;
     tm->tm_mday = date.Date;
@@ -54,7 +58,10 @@ static mp_obj_t mp_time_time_get(void) {
     rtc_init_finalise();
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
-    HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef time_status = HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
+    HAL_StatusTypeDef date_status = HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
+    if (time_status != HAL_OK || date_status != HAL_OK) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC read failed"));
+    }
     return timeutils_obj_from_timestamp(timeutils_seconds_since_epoch(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds));
 }
