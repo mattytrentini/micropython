@@ -4,9 +4,13 @@
 class USBDevice -- USB Device driver
 ====================================
 
-Availability: **ESP32, RP2, SAMD**
+Availability: **ESP32, RP2, SAMD, STM32C5**
 
 .. note:: Native USB support is required, and not every board supports native USB.
+   On STM32C5, the runtime device shares the native USB connection with the
+   built-in CDC device. Keep a UART REPL available when changing USB
+   configurations so the interpreter remains accessible while the host
+   re-enumerates the device.
 
 USBDevice provides a low-level Python API for implementing USB device functions using
 Python code.

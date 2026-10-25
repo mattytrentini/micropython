@@ -13,7 +13,7 @@
 #define MICROPY_HW_ENABLE_DAC               (0) // TODO: enable once DAC driver adapted
 #define MICROPY_HW_ENABLE_USB               (1)
 #define MICROPY_HW_TINYUSB_STACK            (1)
-#define MICROPY_HW_ENABLE_USB_RUNTIME_DEVICE (0)
+#define MICROPY_HW_ENABLE_USB_RUNTIME_DEVICE (1)
 #define MICROPY_HW_USB_FS                   (1)
 #define MICROPY_HW_USB_MSC                  (0)
 #define MICROPY_HW_USB_PRODUCT_FS_STRING    "NUCLEO-C5"
