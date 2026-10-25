@@ -228,6 +228,14 @@ on-board LED, and PB3/PB4/PB5 are used by the board's SPI3 configuration.
 An external codec or audio device is required; no audio loopback is wired on
 the board.
 
+On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
+clocks. Runtime clock changes are intentionally unsupported: C5's I2C timings
+are calibrated for the 144 MHz PCLK1 configuration, and active UART/SPI/I2S
+peripherals also depend on their kernel clocks. `machine.lightsleep()` uses
+the core SLEEP mode and returns on an enabled interrupt without changing
+peripheral clocks. Timed lightsleep and deepsleep are unavailable because RTC
+wakeup support is not implemented.
+
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
 use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.
 `machine.I2CTarget` is available on these hardware buses, with 7-bit and 10-bit

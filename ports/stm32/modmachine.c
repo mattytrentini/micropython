@@ -27,6 +27,9 @@
 // This file is never compiled standalone, it's included directly from
 // extmod/modmachine.c via MICROPY_PY_MACHINE_INCLUDEFILE.
 
+#if defined(STM32C5)
+#include "stm32c5xx_hal_pwr.h"
+#endif
 #include <string.h>
 #include "modmachine.h"
 #include "py/gc.h"
@@ -377,7 +380,11 @@ static mp_obj_t mp_machine_get_freq(void) {
 }
 
 static void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
-    #if defined(STM32F0) || defined(STM32L0) || defined(STM32L1) || defined(STM32L4) || defined(STM32G0) || defined(STM32N6)
+    #if defined(STM32C5)
+    (void)n_args;
+    (void)args;
+    mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.freq changes are not supported on STM32C5"));
+    #elif defined(STM32F0) || defined(STM32L0) || defined(STM32L1) || defined(STM32L4) || defined(STM32G0) || defined(STM32N6)
     mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.freq set not supported yet"));
     #else
     mp_int_t sysclk = mp_obj_get_int(args[0]);
@@ -422,19 +429,32 @@ static void mp_machine_idle(void) {
 
 #if MICROPY_PY_MACHINE_BARE_METAL_FUNCS
 static void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
+    #if defined(STM32C5)
+    if (n_args != 0) {
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("timed lightsleep requires RTC wakeup support"));
+    }
+    HAL_PWR_EnterSleepMode(HAL_PWR_LOW_PWR_MODE_WFI);
+    #else
     if (n_args != 0) {
         mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};
         pyb_rtc_wakeup(2, args2);
     }
     powerctrl_enter_stop_mode();
+    #endif
 }
 
 static void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
+    #if defined(STM32C5)
+    (void)n_args;
+    (void)args;
+    mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.deepsleep is not supported on STM32C5"));
+    #else
     if (n_args != 0) {
         mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};
         pyb_rtc_wakeup(2, args2);
     }
     powerctrl_enter_standby_mode();
+    #endif
 }
 #endif
 
