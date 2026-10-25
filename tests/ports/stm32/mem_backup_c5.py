@@ -14,11 +14,9 @@ assert len(region) * region.itemsize == 128
 regions = machine.mem_backup(-1)
 assert len(regions) == 1
 assert regions[0].itemsize == 4 and len(regions[0]) == 32
+assert isinstance(region[0], int)
 
-original = region[0]
-region[0] = 0x13579BDF
-assert region[0] == 0x13579BDF
-region[0] = original
+
 
 for index in (-2, 1):
     try:

@@ -160,6 +160,9 @@ To always read a positive integer
    stm32   last BKP reg    clock frequency (``MICROPY_HW_CLK_LAST_FREQ``)
    stm32   BKP31R (N6)     mboot bootloader entry
    ======  ==============  =========================================================
+   stm32 C5 TAMP register ownership by the factory TinyUF2 bootloader has not
+   been confirmed; avoid writing registers until their use is known.
+
 
    The buffer allows direct register access and can be combined with
    ``uctypes`` for structured layouts::
