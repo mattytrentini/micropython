@@ -692,13 +692,26 @@ int i2c_find_peripheral(mp_obj_t id) {
 
 #if MICROPY_HW_ENABLE_HW_I2C_TARGET || MICROPY_PY_PYB_LEGACY
 
+#if defined(STM32C5)
+#define I2C1_ER_IRQn I2C1_ERR_IRQn
+#define I2C1_ER_IRQHandler I2C1_ERR_IRQHandler
+#if defined(I2C2_BASE)
+#define I2C2_ER_IRQn I2C2_ERR_IRQn
+#define I2C2_ER_IRQHandler I2C2_ERR_IRQHandler
+#endif
+#endif
+#if defined(STM32C5)
+#define I2C_TARGET_IRQ_HANDLER(i2c) i2c_target_irq_handler(i2c)
+#else
+#define I2C_TARGET_IRQ_HANDLER(i2c) i2c_slave_irq_handler(i2c)
+#endif
 #if defined(MICROPY_HW_I2C1_SCL)
 void I2C1_EV_IRQHandler(void) {
     MP_STATIC_ASSERT(I2C1_EV_IRQn > 0);
     IRQ_ENTER(I2C1_EV_IRQn);
     #if MICROPY_HW_ENABLE_HW_I2C_TARGET
     if (i2c_target_enabled & 1) {
-        i2c_slave_irq_handler(I2C1);
+        I2C_TARGET_IRQ_HANDLER(I2C1);
     } else
     #endif
     {
@@ -714,7 +727,7 @@ void I2C1_ER_IRQHandler(void) {
     IRQ_ENTER(I2C1_ER_IRQn);
     #if MICROPY_HW_ENABLE_HW_I2C_TARGET
     if (i2c_target_enabled & 1) {
-        i2c_slave_irq_handler(I2C1);
+        I2C_TARGET_IRQ_HANDLER(I2C1);
     } else
     #endif
     {
@@ -732,7 +745,7 @@ void I2C2_EV_IRQHandler(void) {
     IRQ_ENTER(I2C2_EV_IRQn);
     #if MICROPY_HW_ENABLE_HW_I2C_TARGET
     if (i2c_target_enabled & 2) {
-        i2c_slave_irq_handler(I2C2);
+        I2C_TARGET_IRQ_HANDLER(I2C2);
     } else
     #endif
     {
@@ -748,7 +761,7 @@ void I2C2_ER_IRQHandler(void) {
     IRQ_ENTER(I2C2_ER_IRQn);
     #if MICROPY_HW_ENABLE_HW_I2C_TARGET
     if (i2c_target_enabled & 2) {
-        i2c_slave_irq_handler(I2C2);
+        I2C_TARGET_IRQ_HANDLER(I2C2);
     } else
     #endif
     {

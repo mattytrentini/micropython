@@ -19,6 +19,8 @@ ADDR = 67
 
 kwargs_target = {}
 
+use_hardware_controller = False
+
 # Configure pins based on the target.
 if sys.platform == "alif" and sys.implementation._build == "ALIF_ENSEMBLE":
     args_controller = {"scl": "P1_1", "sda": "P1_0"}
@@ -29,7 +31,11 @@ elif sys.platform == "esp32":
     kwargs_target = {"scl": 9, "sda": 8}
 elif sys.platform == "rp2":
     args_controller = {"scl": 5, "sda": 4}
+elif sys.platform == "pyboard" and "STM32C5" in sys.implementation._machine:
+    # Connect I2C2 (PB3/PB4) to I2C1 (PB6/PB7).  I2C2 is the separate controller.
+    args_controller = None
     args_target = (1,)
+    use_hardware_controller = True
 elif sys.platform == "pyboard":
     if sys.implementation._build == "NUCLEO_WB55":
         args_controller = {"scl": "B8", "sda": "B9"}
@@ -59,16 +65,26 @@ else:
     raise SystemExit
 
 
+def new_controller():
+    if use_hardware_controller:
+        from machine import I2C
+        return I2C(2, freq=100_000)
+    return SoftI2C(**args_controller)
+
+
 def config_pull_up():
-    Pin(args_controller["scl"], Pin.OPEN_DRAIN, Pin.PULL_UP)
-    Pin(args_controller["sda"], Pin.OPEN_DRAIN, Pin.PULL_UP)
+    if args_controller is not None:
+        Pin(args_controller["scl"], Pin.OPEN_DRAIN, Pin.PULL_UP)
+        Pin(args_controller["sda"], Pin.OPEN_DRAIN, Pin.PULL_UP)
 
 
 class TestMemory(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.mem = bytearray(8)
-        cls.i2c = SoftI2C(**args_controller)
+        with self.assertRaises(ValueError):
+            I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=bytearray())
+        cls.i2c = new_controller()
         cls.i2c_target = I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=cls.mem)
         config_pull_up()
 
@@ -140,7 +156,7 @@ class TestMemoryIRQ(unittest.TestCase):
         cls.mem = bytearray(8)
         cls.events = [0] * 8
         cls.num_events = 0
-        cls.i2c = SoftI2C(**args_controller)
+        cls.i2c = new_controller()
         cls.i2c_target = I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=cls.mem)
         cls.i2c_target.irq(TestMemoryIRQ.irq_handler)
         config_pull_up()
@@ -183,7 +199,7 @@ class TestPolling(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.i2c = SoftI2C(**args_controller)
+        cls.i2c = new_controller()
         cls.i2c_target = I2CTarget(*args_target, addr=ADDR)
         cls.i2c_target.irq(
             TestPolling.irq_handler,
@@ -227,7 +243,7 @@ class TestIRQ(unittest.TestCase):
     def setUpClass(cls):
         cls.events = [0] * 8
         cls.num_events = 0
-        cls.i2c = SoftI2C(**args_controller)
+        cls.i2c = new_controller()
         cls.i2c_target = I2CTarget(*args_target, addr=ADDR)
         cls.i2c_target.irq(
             TestIRQ.irq_handler,

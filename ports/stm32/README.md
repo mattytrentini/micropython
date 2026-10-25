@@ -222,11 +222,12 @@ SPI3 routes D8/D9/D10 to PE2/PB0/PB15; the Nucleo uses PB3/PB4/PB5. These
 alternate functions were checked against ST DS15137 Table 14. DMA and the
 legacy `pyb.SPI` API remain disabled on C5.
 
-`machine.I2C` provides the polling controller interface on I2C1 and I2C2.
-The boards use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 on both boards, connecting
-to the XIAO's onboard IMU. Target mode is not enabled.
-Zero-length reads return an empty result without a bus transaction; zero-length
-writes still address the target.
+`machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
+use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.
+`machine.I2CTarget` is available on these hardware buses, with 7-bit and 10-bit
+addresses, backing memory and IRQ callbacks. Target mode handles repeated STARTs
+as a new transfer without reporting a STOP; connect a separate controller to the
+board-defined target pins for transactions.
 `machine.mem_backup()` exposes the C5 TAMP backup-register bank as 32
 four-byte words. The register bank is not cleared during MicroPython startup;
 it retains values while the RTC backup domain remains powered.

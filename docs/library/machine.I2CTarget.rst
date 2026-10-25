@@ -76,6 +76,11 @@ example, to see the raw events as they are triggered::
 
 Availability: **Alif, ESP32, MIMXRT, RP2, SAMD, STM32, Zephyr**
 
+On STM32C5, the hardware I2C1 and I2C2 peripherals can be configured as target
+devices.  The selected board defines their pins; a separate controller must be
+connected to the target pins for transactions to occur.  A repeated START ends the
+previous transfer and starts the next one without being treated as a STOP.
+
 Constructors
 ------------
 
@@ -89,8 +94,8 @@ Constructors
       - *addr* is the I2C address of the target.
       - *addrsize* is the number of bits in the I2C target address.  Valid values
         are 7 and 10.
-      - *mem* is an object with the buffer protocol that is writable.  If not
-        specified then there is no backing memory and data must be read/written
+      - *mem* is a non-empty object with the buffer protocol that is writable.  If
+        not specified then there is no backing memory and data must be read/written
         using the :meth:`I2CTarget.readinto` and :meth:`I2CTarget.write` methods.
       - *mem_addrsize* is the number of bits in the memory address.  Valid values
         are 0, 8, 16, 24 and 32.

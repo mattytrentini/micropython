@@ -753,7 +753,7 @@ void mp_usbd_ll_init(void);
     || defined(MICROPY_HW_I2C3_SCL) || defined(MICROPY_HW_I2C4_SCL)
 #define MICROPY_HW_ENABLE_HW_I2C (1)
 #ifndef MICROPY_HW_ENABLE_HW_I2C_TARGET
-#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32L4) || defined(STM32WB)
+#if defined(STM32C5) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32L4) || defined(STM32WB)
 #define MICROPY_HW_ENABLE_HW_I2C_TARGET (1)
 #else
 #define MICROPY_HW_ENABLE_HW_I2C_TARGET (0)
