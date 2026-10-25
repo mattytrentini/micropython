@@ -28,8 +28,24 @@
 #include "py/mpconfig.h"
 #include "py/misc.h"
 #include "py/mphal.h"
+#include "py/mperrno.h"
 #include "flash.h"
 
+#if defined(STM32C5)
+static hal_flash_handle_t c5_flash_handle;
+static bool c5_flash_initialized;
+
+static hal_status_t c5_flash_init(void) {
+    if (!c5_flash_initialized) {
+        hal_status_t status = HAL_FLASH_Init(&c5_flash_handle, HAL_FLASH);
+        if (status == HAL_OK) {
+            c5_flash_initialized = true;
+        }
+        return status;
+    }
+    return HAL_OK;
+}
+#endif
 #if !defined(STM32N6)
 
 #if defined(STM32F0)
@@ -149,11 +165,10 @@ static const flash_layout_t flash_layout[] = {
 #define FLASH_LAYOUT_NUM_SECTORS    (1024)
 
 #elif defined(STM32C5)
-
 #define FLASH_LAYOUT_IS_HOMOGENEOUS (1)
 #define FLASH_LAYOUT_START_ADDR     (FLASH_BASE)
-#define FLASH_LAYOUT_SECTOR_SIZE    (0x2000)
-#define FLASH_LAYOUT_NUM_SECTORS    (128)
+#define FLASH_LAYOUT_SECTOR_SIZE    (FLASH_PAGE_SIZE)
+#define FLASH_LAYOUT_NUM_SECTORS    (FLASH_SIZE / FLASH_PAGE_SIZE)
 
 #elif defined(STM32H5) || defined(STM32U5)
 
@@ -195,24 +210,40 @@ static uint32_t get_page(uint32_t addr) {
 // get the bank of a given flash address
 static uint32_t get_bank(uint32_t addr) {
     #if defined(STM32C5)
-    if (1) { // TODO: check bank swap for C5
+    if (HAL_FLASH_ITF_OB_IsBankSwapped(HAL_FLASH) == HAL_FLASH_ITF_OB_BANK_NOT_SWAPPED) {
     #elif defined(STM32H5) || defined(STM32H7)
     if (READ_BIT(FLASH->OPTCR, FLASH_OPTCR_SWAP_BANK) == 0) {
     #else
     if (READ_BIT(SYSCFG->MEMRMP, SYSCFG_MEMRMP_FB_MODE) == 0) {
-        #endif
+    #endif
         // no bank swap
         if (addr < (FLASH_LAYOUT_START_ADDR + FLASH_BANK_SIZE)) {
+            #if defined(STM32C5)
+            return HAL_FLASH_BANK_1;
+            #else
             return FLASH_BANK_1;
+            #endif
         } else {
+            #if defined(STM32C5)
+            return HAL_FLASH_BANK_2;
+            #else
             return FLASH_BANK_2;
+            #endif
         }
     } else {
         // bank swap
         if (addr < (FLASH_LAYOUT_START_ADDR + FLASH_BANK_SIZE)) {
+            #if defined(STM32C5)
+            return HAL_FLASH_BANK_2;
+            #else
             return FLASH_BANK_2;
+            #endif
         } else {
+            #if defined(STM32C5)
+            return HAL_FLASH_BANK_1;
+            #else
             return FLASH_BANK_1;
+            #endif
         }
     }
 }
@@ -316,6 +347,68 @@ int32_t flash_get_sector_info(uint32_t addr, uint32_t *start_addr, uint32_t *siz
     #endif
     return -1;
 }
+#if defined(STM32C5)
+int flash_erase(uint32_t flash_dest) {
+    if (flash_dest < FLASH_LAYOUT_START_ADDR || flash_dest >= FLASH_LAYOUT_START_ADDR + FLASH_SIZE
+        || (flash_dest - FLASH_LAYOUT_START_ADDR) % FLASH_LAYOUT_SECTOR_SIZE != 0) {
+        return -MP_EINVAL;
+    }
+    hal_status_t status = c5_flash_init();
+    if (status == HAL_OK) {
+        status = HAL_FLASH_ITF_Unlock(HAL_FLASH);
+    }
+    if (status == HAL_OK) {
+        status = HAL_FLASH_ErasePage(&c5_flash_handle, get_bank(flash_dest), get_page(flash_dest), 1, HAL_MAX_DELAY);
+    }
+    if (HAL_FLASH_ITF_IsLocked(HAL_FLASH) == HAL_FLASH_ITF_UNLOCKED) {
+        HAL_FLASH_ITF_Lock(HAL_FLASH);
+    }
+    return mp_hal_status_to_neg_errno(status);
+}
+
+int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
+    if (num_word32 == 0) {
+        return 0;
+    }
+    if (src == NULL || num_word32 > UINT32_MAX / sizeof(uint32_t)
+        || ((uintptr_t)src & (sizeof(uint32_t) - 1)) != 0
+        || (flash_dest & (sizeof(uint32_t) - 1)) != 0
+        || flash_dest < FLASH_LAYOUT_START_ADDR) {
+        return -MP_EINVAL;
+    }
+    uint32_t size = num_word32 * sizeof(uint32_t);
+    if (size > FLASH_SIZE || flash_dest > FLASH_LAYOUT_START_ADDR + FLASH_SIZE - size) {
+        return -MP_EINVAL;
+    }
+
+    hal_status_t status = c5_flash_init();
+    if (status == HAL_OK) {
+        status = HAL_FLASH_ITF_Unlock(HAL_FLASH);
+    }
+    uint32_t bank_size = 0;
+    if (status == HAL_OK) {
+        bank_size = HAL_FLASH_GetBankSizeByte(&c5_flash_handle, HAL_FLASH_BANK_1);
+        if (bank_size == 0) {
+            status = HAL_ERROR;
+        }
+    }
+    while (status == HAL_OK && size != 0) {
+        uint32_t bank_offset = (flash_dest - FLASH_LAYOUT_START_ADDR) % bank_size;
+        uint32_t chunk_size = bank_size - bank_offset;
+        if (chunk_size > size) {
+            chunk_size = size;
+        }
+        status = HAL_FLASH_ProgramByAddrAdapt(&c5_flash_handle, flash_dest, src, chunk_size, HAL_MAX_DELAY);
+        flash_dest += chunk_size;
+        src += chunk_size / sizeof(uint32_t);
+        size -= chunk_size;
+    }
+    if (HAL_FLASH_ITF_IsLocked(HAL_FLASH) == HAL_FLASH_ITF_UNLOCKED) {
+        HAL_FLASH_ITF_Lock(HAL_FLASH);
+    }
+    return mp_hal_status_to_neg_errno(status);
+}
+#else
 
 // Erase a single flash page which starts at the given address.
 // The address will be converted to a bank and sector number.
@@ -330,7 +423,6 @@ int flash_erase(uint32_t flash_dest) {
 
     // Unlock the flash for erase.
     HAL_FLASH_Unlock();
-
     #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
     // Tell the HCI controller stack we're starting an erase, so it
     // avoids radio activity for a while.
@@ -356,11 +448,6 @@ int flash_erase(uint32_t flash_dest) {
     EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
     EraseInitStruct.NbPages = num_sectors;
 
-    #elif defined(STM32C5)
-
-    // TODO: C5 uses a different flash HAL API. Stub for now.
-    EraseInitStruct.TypeErase = 0;
-    EraseInitStruct.NbPages = num_sectors;
 
     #elif defined(STM32F4) || defined(STM32F7) || defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
 
@@ -386,9 +473,6 @@ int flash_erase(uint32_t flash_dest) {
     EraseInitStruct.Page = get_page(flash_dest);
     #elif defined(STM32F4) || defined(STM32F7)
     EraseInitStruct.Sector = flash_get_sector_info(flash_dest, NULL, NULL);
-    #elif defined(STM32C5)
-    EraseInitStruct.Page = get_page(flash_dest);
-    EraseInitStruct.Banks = get_bank(flash_dest);
     #elif defined(STM32H5) || defined(STM32H7)
     EraseInitStruct.Banks = get_bank(flash_dest);
     EraseInitStruct.Sector = get_page(flash_dest);
@@ -486,9 +570,9 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
         #endif
     }
 
-    #elif defined(STM32C5) || defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
+#elif defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
 
-    #if defined(STM32C5) || defined(STM32H5) || defined(STM32U5)
+#if defined(STM32H5) || defined(STM32U5)
     static const unsigned int WORD32_PER_FLASHWORD = 4;
     static const unsigned int PROGRAM_TYPE = FLASH_TYPEPROGRAM_QUADWORD;
     #else
@@ -544,5 +628,6 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
 
     return mp_hal_status_to_neg_errno(status);
 }
+#endif // defined(STM32C5)
 
 #endif

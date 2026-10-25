@@ -236,6 +236,11 @@ confirmed PB3/PB4-to-PB6/PB7 wiring before running.
 four-byte words. The register bank is not cleared during MicroPython startup;
 it retains values while the RTC backup domain remains powered.
 
+The C5 flash backend uses the C5 HAL's polling program-by-address and page-erase
+operations, including bank-swap-aware page selection. It is available to port
+code, but internal flash filesystem storage remains disabled on both C5 boards;
+enabling it requires a separate storage-layout decision.
+
 
 `machine.time_pulse_us()` uses the Cortex-M cycle counter for pulse timing;
 timeouts are returned as negative values as in the common machine API.

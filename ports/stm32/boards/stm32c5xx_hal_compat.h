@@ -453,58 +453,6 @@ typedef struct {
 #define __HAL_FLASH_SET_LATENCY(lat)    LL_FLASH_SetLatency(FLASH, lat)
 #define __HAL_FLASH_GET_LATENCY()       LL_FLASH_GetLatency(FLASH)
 
-// ---------------------------------------------------------------------------
-// Flash erase/program compatibility
-// ---------------------------------------------------------------------------
-// Stub types and functions for flash.c compilation.
-// Actual flash operations need adaptation for C5's HAL API.
-
-typedef struct {
-    uint32_t TypeErase;
-    uint32_t Banks;
-    uint32_t Page;
-    uint32_t NbPages;
-} FLASH_EraseInitTypeDef;
-
-#define FLASH_TYPEERASE_PAGES   0
-#ifndef FLASH_BANK_1
-#define FLASH_BANK_1            1
-#endif
-#ifndef FLASH_BANK_2
-#define FLASH_BANK_2            2
-#endif
-#ifndef FLASH_BANK_SIZE
-#define FLASH_BANK_SIZE         (FLASH_SIZE / 2)
-#endif
-
-// Stub for HAL_FLASHEx_Erase - will need real implementation for filesystem
-static inline hal_status_t HAL_FLASHEx_Erase(FLASH_EraseInitTypeDef *pEraseInit, uint32_t *PageError) {
-    (void)pEraseInit;
-    (void)PageError;
-    return HAL_ERROR; // TODO: implement
-}
-
-// Stub for flash programming
-#define FLASH_TYPEPROGRAM_QUADWORD 0
-static inline hal_status_t HAL_FLASH_Program_Compat(uint32_t TypeProgram, uint32_t Address, uint32_t DataAddress) {
-    (void)TypeProgram;
-    (void)Address;
-    (void)DataAddress;
-    return HAL_ERROR; // TODO: implement
-}
-#define HAL_FLASH_Program HAL_FLASH_Program_Compat
-
-static inline hal_status_t HAL_FLASH_Unlock_Compat(void) {
-    return HAL_OK;
-}
-static inline hal_status_t HAL_FLASH_Lock_Compat(void) {
-    return HAL_OK;
-}
-#define HAL_FLASH_Unlock HAL_FLASH_Unlock_Compat
-#define HAL_FLASH_Lock HAL_FLASH_Lock_Compat
-
-#define __HAL_FLASH_CLEAR_FLAG(flags) ((void)0)
-#define FLASH_FLAG_ALL_ERRORS 0
 
 // ---------------------------------------------------------------------------
 // RCC clock enable macros

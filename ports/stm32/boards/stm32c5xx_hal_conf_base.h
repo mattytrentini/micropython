@@ -76,6 +76,8 @@
 // CubeMX2 HAL system configuration
 #define USE_HAL_TICK_INT_PRIORITY   0
 #define USE_HAL_FLASH_PREFETCH      1U
+#define USE_HAL_FLASH_PROGRAM_BY_ADDR 1
+#define USE_HAL_FLASH_ERASE_PAGE      1
 #define USE_HAL_MUTEX               0U
 #define USE_HAL_CHECK_PARAM         0U
 #define USE_HAL_SECURE_CHECK_PARAM  0U
