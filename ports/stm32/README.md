@@ -195,8 +195,8 @@ STM32C5 peripherals
 
 External GPIO interrupts are available through `machine.Pin.irq()` and
 `pyb.ExtInt`, with rising/falling edges and hard or scheduled callbacks.
-Only one GPIO port can own each numbered EXTI line at a time. RTC interrupts
-and other non-GPIO EXTI sources are not enabled on C5.
+Only one GPIO port can own each numbered EXTI line at a time. Other non-GPIO
+sources are not exposed through `pyb.ExtInt`.
 
 `pyb.RTC` exposes calendar initialization and `datetime()` read/write on both
 C5 boards. The XIAO and Nucleo board hardware provide a 32.768 kHz LSE crystal.
@@ -207,7 +207,9 @@ is initialized to 2000-01-01 only when the RTC reports that its calendar has
 never been initialized. Existing calendar contents and TAMP backup registers
 are preserved. The Python `time` module's calendar and wall-clock functions use
 this RTC; `time.time()` and `time.time_ns()` use the MicroPython epoch of 2000.
-RTC wakeup and calibration methods are not exposed on C5.
+`pyb.RTC.wakeup()` uses the RTC wakeup timer and schedules callbacks through the
+normal deferred callback path. It requires a supported LSE/LSI clock and its
+standard prescalers; calibration remains unavailable.
 
 `pyb.Timer` supports counter/update callbacks, PWM and output compare,
 input capture, encoder modes, and advanced complementary outputs/deadtime.
@@ -229,12 +231,18 @@ An external codec or audio device is required; no audio loopback is wired on
 the board.
 
 On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
-clocks. Runtime clock changes are intentionally unsupported: C5's I2C timings
-are calibrated for the 144 MHz PCLK1 configuration, and active UART/SPI/I2S
-peripherals also depend on their kernel clocks. `machine.lightsleep()` uses
-the core SLEEP mode and returns on an enabled interrupt without changing
-peripheral clocks. Timed lightsleep and deepsleep are unavailable because RTC
-wakeup support is not implemented.
+clocks. It supports 48 MHz HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers;
+the PSI output and PSIDIV3 USB clock remain unchanged. A clock transition is
+rejected with `OSError(EBUSY)` while a peripheral depending on the changed
+clocks is enabled. Deinitialize those peripherals first; on the Nucleo this
+includes the UART2 REPL.
+
+`machine.lightsleep([timeout_ms])` enters STOP0 and restores the prior system
+clock, SysTick and PSI stop-clock setting after wake. RTC wakeup is used for a
+timeout. Active non-REPL peripherals block STOP0; a connected USB device must
+already be suspended by its host. The Nucleo UART2 REPL is allowed through STOP0
+because its source clock is restored before interrupts run. `machine.deepsleep()`
+enters Standby and resets on wake; an optional timeout uses the RTC wakeup timer.
 
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
 use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.

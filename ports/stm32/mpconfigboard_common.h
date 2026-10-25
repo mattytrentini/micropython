@@ -466,7 +466,7 @@ void mp_usbd_ll_init(void);
 #elif defined(STM32C5)
 
 #define MP_HAL_UNIQUE_ID_ADDRESS (mp_hal_unique_id_address)
-#define PYB_EXTI_NUM_VECTORS (16)
+#define PYB_EXTI_NUM_VECTORS (18) // 16 GPIO lines plus the RTC wakeup callback slot at line 17
 #define MICROPY_HW_MAX_I2C (2)
 #define MICROPY_HW_MAX_TIMER (17)
 #define MICROPY_HW_MAX_UART (8)

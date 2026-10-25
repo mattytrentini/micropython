@@ -96,6 +96,7 @@ void uart_deinit(machine_uart_obj_t *uart_obj);
 void uart_irq_handler(mp_uint_t uart_id);
 
 void uart_attach_to_repl(machine_uart_obj_t *self, bool attached);
+bool uart_is_attached_to_repl(USART_TypeDef *uartx);
 uint32_t uart_get_source_freq(machine_uart_obj_t *self);
 uint32_t uart_get_baudrate(machine_uart_obj_t *self);
 void uart_set_baudrate(machine_uart_obj_t *self, uint32_t baudrate);

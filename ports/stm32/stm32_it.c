@@ -600,10 +600,14 @@ void RTC_WKUP_IRQHandler(void)
 #endif
 {
     IRQ_ENTER(RTC_WKUP_IRQn);
+#if defined(STM32C5)
+    if (LL_RTC_IsActiveFlag_WUT()) {
+        LL_RTC_ClearFlag_WUT();
+        Handle_EXTI_Irq(17); // RTC EXTI line, see STM32C5 HAL EXTI mapping
+    }
+    #else
     #if defined(STM32G0) || defined(STM32G4) || defined(STM32WL)
     RTC->MISR &= ~RTC_MISR_WUTMF; // clear wakeup interrupt flag
-    #elif defined(STM32C5)
-    LL_RTC_ClearFlag_WUT();
     #elif defined(STM32H5) || defined(STM32N6)
     LL_RTC_ClearFlag_WUT(RTC);
     #elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H7B3xx) || defined(STM32H7B3xxQ)
@@ -612,6 +616,7 @@ void RTC_WKUP_IRQHandler(void)
     RTC->ISR &= ~RTC_ISR_WUTF; // clear wakeup interrupt flag
     #endif
     Handle_EXTI_Irq(EXTI_RTC_WAKEUP); // clear EXTI flag and execute optional callback
+    #endif
     IRQ_EXIT(RTC_WKUP_IRQn);
 }
 #endif

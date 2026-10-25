@@ -17,6 +17,13 @@ def datetime_matches():
 print(datetime_matches())
 print(time.time_ns() > 0)
 
+
+# Verify the RTC wakeup timer dispatches a deferred callback.
+wakeup_events = []
+rtc.wakeup(2, 10, lambda line: wakeup_events.append(line))
+time.sleep_ms(50)
+rtc.wakeup(2, None)
+print(bool(wakeup_events))
 # Reinitializing the Python object must not reset an initialized calendar.
 rtc.init()
 print(datetime_matches())

@@ -30,13 +30,283 @@
 #include "powerctrl.h"
 #include "rtc.h"
 #include "extmod/modbluetooth.h"
+#include "uart.h"
+#if MICROPY_HW_TINYUSB_STACK
+#include "tusb.h"
+#endif
 #ifndef NO_QSTR
 #include "genhdr/pllfreqtable.h"
 #endif
 
 #if defined(STM32C5)
-// STM32C5 uses PSI instead of PLL. Provide stub implementations.
-// Full power control support will be added later.
+
+// C5 clock changes are deliberately limited to the two board-qualified sources.
+// In particular, PSI and its divider are not changed: PSIDIV3 supplies USB.
+static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
+    #if defined(I2C1)
+    if (I2C1->CR1 & I2C_CR1_PE) {
+        return true;
+    }
+    #endif
+    #if defined(I2C2)
+    if (I2C2->CR1 & I2C_CR1_PE) {
+        return true;
+    }
+    #endif
+#if defined(I2C3)
+    if (I2C3->CR1 & I2C_CR1_PE) {
+        return true;
+    }
+    #endif
+    #if defined(SPI1)
+    if (SPI1->CR1 & SPI_CR1_SPE) {
+        return true;
+    }
+    #endif
+    #if defined(SPI2)
+    if (SPI2->CR1 & SPI_CR1_SPE) {
+        return true;
+    }
+    #endif
+    #if defined(SPI3)
+    if (SPI3->CR1 & SPI_CR1_SPE) {
+        return true;
+    }
+    #endif
+#if defined(SPI4)
+    if (SPI4->CR1 & SPI_CR1_SPE) {
+        return true;
+    }
+    #endif
+    #if defined(TIM1)
+    if (TIM1->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM2)
+    if (TIM2->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM3)
+    if (TIM3->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM4)
+    if (TIM4->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM5)
+    if (TIM5->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM6)
+    if (TIM6->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM7)
+    if (TIM7->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM8)
+    if (TIM8->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM15)
+    if (TIM15->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM16)
+    if (TIM16->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(TIM17)
+    if (TIM17->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+#if defined(TIM20)
+    if (TIM20->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
+    #if defined(USART1)
+    if (USART1->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+    #if defined(USART2)
+    if ((USART2->CR1 & USART_CR1_UE)
+        && !(allow_repl_uart && uart_is_attached_to_repl(USART2))) {
+        return true;
+    }
+    #endif
+    #if defined(USART3)
+    if (USART3->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+#if defined(USART4)
+    if (USART4->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+#if defined(USART5)
+    if (USART5->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+    #if defined(UART4)
+    if (UART4->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+    #if defined(UART5)
+    if (UART5->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+    #if defined(LPUART1)
+    if (LPUART1->CR1 & USART_CR1_UE) {
+        return true;
+    }
+    #endif
+
+    // LPDMA ownership is maintained by the C5 DMA backend. If either engine's
+    // clock is enabled, conservatively avoid changing clocks under a transfer.
+    if (RCC->AHB1ENR & (RCC_AHB1ENR_LPDMA1EN | RCC_AHB1ENR_LPDMA2EN)) {
+        return true;
+    }
+    return false;
+}
+
+int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t apb2) {
+    uint32_t source;
+    if (sysclk == 48000000U && ahb == sysclk && apb1 == sysclk && apb2 == sysclk) {
+        source = LL_RCC_SYS_CLKSOURCE_HSE;
+    } else if (sysclk == 144000000U && ahb == sysclk && apb1 == sysclk && apb2 == sysclk) {
+        source = LL_RCC_SYS_CLKSOURCE_PSIS;
+    } else {
+        return -MP_EINVAL;
+    }
+
+    uint32_t current = HAL_RCC_GetSYSCLKFreq();
+    if (current == sysclk) {
+        return 0;
+    }
+    if (powerctrl_c5_peripherals_busy(false)) {
+        return -MP_EBUSY;
+    }
+
+    if (source == LL_RCC_SYS_CLKSOURCE_HSE) {
+        if (!LL_RCC_HSE_IsReady()) {
+            return -MP_EIO;
+        }
+    } else if (!LL_RCC_PSIS_IsReady()) {
+        return -MP_EIO;
+    }
+    // Keep the board-qualified PSIS wait-state setting in both directions.
+    // This is safe at 48 MHz and avoids reducing latency during a transition.
+    LL_FLASH_SetLatency(FLASH, MICROPY_HW_FLASH_LATENCY);
+    while (LL_FLASH_GetLatency(FLASH) != MICROPY_HW_FLASH_LATENCY) {
+    }
+
+    bool tick_enabled = (SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) != 0;
+    uint32_t irq_state = disable_irq();
+    LL_RCC_SetSysClkSource(source);
+    uint32_t expected = source == LL_RCC_SYS_CLKSOURCE_HSE
+        ? LL_RCC_SYS_CLKSOURCE_STATUS_HSE : LL_RCC_SYS_CLKSOURCE_STATUS_PSIS;
+    while (LL_RCC_GetSysClkSource() != expected) {
+    }
+    SystemCoreClockUpdate();
+    powerctrl_config_systick();
+    if (!tick_enabled) {
+        HAL_SuspendTick();
+    }
+    SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk;
+    enable_irq(irq_state);
+    return 0;
+}
+
+int powerctrl_c5_enter_stop_mode(void) {
+    if (powerctrl_c5_peripherals_busy(true)) {
+        return -MP_EBUSY;
+    }
+
+    uint32_t source = LL_RCC_GetSysClkSource();
+    if (source != LL_RCC_SYS_CLKSOURCE_STATUS_PSIS && source != LL_RCC_SYS_CLKSOURCE_STATUS_HSE) {
+        return -MP_EINVAL;
+    }
+#if MICROPY_HW_TINYUSB_STACK
+    bool usb_connected = tud_connected();
+    if (usb_connected && !tud_suspended()) {
+        return -MP_EBUSY;
+    }
+    bool psi_stop_enabled = LL_RCC_PSI_IsEnabledInStopMode();
+    if (usb_connected) {
+        LL_RCC_PSI_EnableInStopMode();
+    }
+#endif
+
+    bool tick_enabled = (SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) != 0;
+    uint32_t irq_state = disable_irq();
+    SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk;
+    LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSIDIV3);
+    HAL_PWR_EnterStopMode(HAL_PWR_LOW_PWR_MODE_WFI, HAL_PWR_STOP0_MODE);
+
+    // STOP wake-up selects HSIDIV3. Restore the previous board-qualified clock
+    // source without touching PSI configuration or the RTC domain.
+    if (source == LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {
+        // The PSI output and its dividers are preserved; only restart its
+        // configured source after STOP if the low-power transition stopped it.
+        if (LL_RCC_GetPSIClkSource() == LL_RCC_PSISOURCE_HSE) {
+            LL_RCC_HSE_Enable();
+            while (!LL_RCC_HSE_IsReady()) {
+            }
+        }
+        LL_RCC_PSIS_Enable();
+        while (!LL_RCC_PSIS_IsReady()) {
+        }
+        LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PSIS);
+        while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {
+        }
+    } else {
+        LL_RCC_HSE_Enable();
+        while (!LL_RCC_HSE_IsReady()) {
+        }
+        LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSE);
+        while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSE) {
+        }
+    }
+#if MICROPY_HW_TINYUSB_STACK
+    if (usb_connected && !psi_stop_enabled) {
+        LL_RCC_PSI_DisableInStopMode();
+    }
+#endif
+    SystemCoreClockUpdate();
+    powerctrl_config_systick();
+    if (!tick_enabled) {
+        HAL_SuspendTick();
+    }
+    SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk;
+    enable_irq(irq_state);
+    return 0;
+
+}
+MP_NORETURN void powerctrl_enter_standby_mode(void) {
+    rtc_init_finalise();
+    HAL_PWR_EnterStandbyMode();
+    for (;;) {
+    }
+}
 
 void powerctrl_check_enter_bootloader(void) {
 }
@@ -44,7 +314,6 @@ void powerctrl_check_enter_bootloader(void) {
 MP_NORETURN void powerctrl_mcu_reset(void) {
     NVIC_SystemReset();
 }
-
 
 #else // !STM32C5
 

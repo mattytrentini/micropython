@@ -1,4 +1,4 @@
-// Lifecycle hooks for peripheral drivers not yet ported to STM32C5.
+// STM32C5 runtime integration.
 
 #include "py/runtime.h"
 #include "py/mphal.h"
@@ -7,12 +7,6 @@
 #include "rtc.h"
 #include "shared/timeutils/timeutils.h"
 
-// RTC wakeup is shared by the machine low-power entry points.
-mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    (void)args;
-    mp_raise_NotImplementedError(MP_ERROR_TEXT("RTC wakeup is not supported on STM32C5"));
-}
 
 // Nanoseconds since the MicroPython epoch, derived from the RTC calendar.
 uint64_t mp_hal_time_ns(void) {

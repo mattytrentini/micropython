@@ -975,6 +975,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
 // STM32C5 RTC calendar support. RTCSEL is write-once after RTC-domain reset;
 // only choose the board default while it is still NONE. Never use the HAL RCC
 // selector helper here because it resets the backup domain when changing it.
+#define C5_EXTI_RTC_WAKEUP_LINE 17
 RTC_HandleTypeDef RTCHandle;
 static bool rtc_init_ok;
 static bool rtc_calendar_ready;
@@ -1106,6 +1107,122 @@ void rtc_init_finalise(void) {
     rtc_calendar_ready = true;
 }
 
+// C5 wakeup timer uses the RTC clock divided by the calendar prescalers.
+// Its clock selection and counter are independent of the calendar state.
+static bool rtc_wakeup_wait_writable(void) {
+    uint32_t start = HAL_GetTick();
+    while (!LL_RTC_IsActiveFlag_WUTW()) {
+        if (HAL_GetTick() - start >= 1000) {
+            return false;
+        }
+    }
+    return true;
+}
+
+mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
+    rtc_init_finalise();
+
+
+    bool enable = args[1] != mp_const_none;
+    mp_int_t wucksel = 0;
+    mp_int_t wut = 0;
+    mp_obj_t callback = mp_const_none;
+    if (enable && n_args <= 3) {
+        mp_int_t ms = mp_obj_get_int(args[1]);
+        if (ms <= 0 || rtc_clock_source == LL_RCC_RTC_CLKSOURCE_HSE_DIV) {
+            mp_raise_ValueError(MP_ERROR_TEXT("wakeup clock unavailable"));
+        }
+        hal_rtc_config_t config;
+        HAL_RTC_GetConfig(&config);
+        if (rtc_clock_source == LL_RCC_RTC_CLKSOURCE_LSI
+            ? (config.asynch_prediv != 127 || config.synch_prediv != 249)
+            : (config.asynch_prediv != 127 || config.synch_prediv != 255)) {
+            mp_raise_ValueError(MP_ERROR_TEXT("wakeup clock unavailable"));
+        }
+        uint32_t rtc_hz = rtc_clock_source == LL_RCC_RTC_CLKSOURCE_LSI ? 32000 : 32768;
+        uint32_t div = 2;
+        wucksel = 3;
+        while (div <= 16 && ms > 2000 * div) {
+            div *= 2;
+            --wucksel;
+        }
+        if (div <= 16) {
+            wut = rtc_hz / div * ms / 1000;
+        } else {
+            uint64_t seconds = ms / 1000;
+            wucksel = 4;
+            if (seconds > 0x10000) {
+                wucksel = 6;
+                seconds -= 0x10000;
+            }
+            if (seconds > 0x10000) {
+                mp_raise_ValueError(MP_ERROR_TEXT("wakeup value too large"));
+            }
+            wut = seconds;
+        }
+        if (wut > 0) {
+            --wut;
+        }
+        if (n_args == 3) {
+            callback = args[2];
+        }
+    } else if (enable) {
+        wucksel = mp_obj_get_int(args[1]);
+        wut = mp_obj_get_int(args[2]);
+        callback = args[3];
+        if ((wucksel != 0 && wucksel != 1 && wucksel != 2 && wucksel != 3 && wucksel != 4 && wucksel != 6)
+            || wut < 0 || wut > 0xffff || rtc_clock_source == LL_RCC_RTC_CLKSOURCE_HSE_DIV) {
+            mp_raise_ValueError(MP_ERROR_TEXT("invalid wakeup configuration"));
+        }
+    }
+    HAL_NVIC_DisableIRQ(RTC_IRQn);
+
+    // Extint's standard deferred callback machinery roots and schedules this
+    // object after the ISR, rather than invoking Python from interrupt context.
+    MP_STATE_PORT(pyb_extint_callback)[C5_EXTI_RTC_WAKEUP_LINE] = callback;
+    pyb_extint_callback_arg[C5_EXTI_RTC_WAKEUP_LINE] = MP_OBJ_NEW_SMALL_INT(C5_EXTI_RTC_WAKEUP_LINE);
+
+    HAL_PWR_DisableRTCDomainWriteProtection();
+    LL_RTC_DisableWriteProtection();
+    LL_RTC_WAKEUP_Disable();
+    LL_RTC_DisableIT_WUT();
+    if (!rtc_wakeup_wait_writable()) {
+        LL_RTC_EnableWriteProtection();
+        HAL_PWR_EnableRTCDomainWriteProtection();
+        HAL_NVIC_EnableIRQ(RTC_IRQn);
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC wakeup timer timeout"));
+    }
+
+    if (enable) {
+        LL_RTC_WAKEUP_SetAutoReload(wut);
+        uint32_t clock = wucksel == 0 ? LL_RTC_WAKEUPCLOCK_DIV_16
+            : wucksel == 1 ? LL_RTC_WAKEUPCLOCK_DIV_8
+            : wucksel == 2 ? LL_RTC_WAKEUPCLOCK_DIV_4
+            : wucksel == 3 ? LL_RTC_WAKEUPCLOCK_DIV_2
+            : wucksel == 4 ? LL_RTC_WAKEUPCLOCK_CKSPRE
+            : LL_RTC_WAKEUPCLOCK_CKSPRE_WUT;
+        LL_RTC_WAKEUP_SetClock(clock);
+        LL_RTC_ClearFlag_WUT();
+        LL_RTC_EnableIT_WUT();
+        LL_RTC_WAKEUP_Enable();
+        EXTI->IMR1 |= 1 << C5_EXTI_RTC_WAKEUP_LINE;
+        EXTI->RTSR1 |= 1 << C5_EXTI_RTC_WAKEUP_LINE;
+        EXTI->RPR1 = 1 << C5_EXTI_RTC_WAKEUP_LINE;
+    } else {
+        EXTI->IMR1 &= ~(1 << C5_EXTI_RTC_WAKEUP_LINE);
+        EXTI->RPR1 = 1 << C5_EXTI_RTC_WAKEUP_LINE;
+    }
+    LL_RTC_EnableWriteProtection();
+    HAL_PWR_EnableRTCDomainWriteProtection();
+    if (enable) {
+        NVIC_SetPriority(RTC_IRQn, IRQ_PRI_RTC_WKUP);
+        HAL_NVIC_EnableIRQ(RTC_IRQn);
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_wakeup_obj, 2, 4, pyb_rtc_wakeup);
+
+
 static hal_status_t rtc_set_datetime(const hal_rtc_date_t *date, const hal_rtc_time_t *time) {
     HAL_PWR_DisableRTCDomainWriteProtection();
     HAL_RTC_DisableWriteProtection();
@@ -1220,6 +1337,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_datetime_obj, 1, 2, pyb_rtc_datetime
 static const mp_rom_map_elem_t pyb_rtc_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&pyb_rtc_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_datetime), MP_ROM_PTR(&pyb_rtc_datetime_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wakeup), MP_ROM_PTR(&pyb_rtc_wakeup_obj) },
 };
 static MP_DEFINE_CONST_DICT(pyb_rtc_locals_dict, pyb_rtc_locals_dict_table);
 

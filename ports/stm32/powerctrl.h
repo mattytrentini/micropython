@@ -52,6 +52,9 @@ void powerctrl_check_enter_bootloader(void);
 void powerctrl_config_systick(void);
 int powerctrl_rcc_clock_config_pll(RCC_ClkInitTypeDef *rcc_init, uint32_t sysclk_mhz, bool need_pllsai);
 int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t apb2);
+#if defined(STM32C5)
+int powerctrl_c5_enter_stop_mode(void);
+#endif
 void powerctrl_enter_stop_mode(void);
 MP_NORETURN void powerctrl_enter_standby_mode(void);
 

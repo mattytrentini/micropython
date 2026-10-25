@@ -1031,6 +1031,16 @@ void uart_deinit(machine_uart_obj_t *self) {
 void uart_attach_to_repl(machine_uart_obj_t *self, bool attached) {
     self->attached_to_repl = attached;
 }
+bool uart_is_attached_to_repl(USART_TypeDef *uartx) {
+    for (int i = 0; i < MP_ARRAY_SIZE(MP_STATE_PORT(machine_uart_obj_all)); ++i) {
+        machine_uart_obj_t *uart_obj = MP_STATE_PORT(machine_uart_obj_all)[i];
+        if (uart_obj != NULL && uart_obj->is_enabled && uart_obj->uartx == uartx) {
+            return uart_obj->attached_to_repl;
+        }
+    }
+    return false;
+}
+
 
 uint32_t uart_get_source_freq(machine_uart_obj_t *self) {
     uint32_t uart_clk = 0;

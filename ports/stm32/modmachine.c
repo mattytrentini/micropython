@@ -151,6 +151,11 @@ void machine_init(void) {
         reset_cause = PYB_RESET_DEEPSLEEP;
         PWR->CR1 |= PWR_CR1_CSBF;
     } else
+#elif defined(STM32C5)
+    if (PWR->PMSR & PWR_PMSR_SBF) {
+        reset_cause = PYB_RESET_DEEPSLEEP;
+        LL_PWR_ClearFlag_SB();
+    } else
     #elif defined(STM32H5)
     if (PWR->PMSR & PWR_PMSR_STOPF || PWR->PMSR & PWR_PMSR_SBF) {
         // came out of standby or stop mode
@@ -381,9 +386,25 @@ static mp_obj_t mp_machine_get_freq(void) {
 
 static void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
     #if defined(STM32C5)
-    (void)n_args;
-    (void)args;
-    mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.freq changes are not supported on STM32C5"));
+    mp_int_t sysclk = mp_obj_get_int(args[0]);
+    mp_int_t ahb = sysclk, apb1 = ahb, apb2 = ahb;
+    if (n_args > 1) {
+        ahb = mp_obj_get_int(args[1]);
+        if (n_args > 2) {
+            apb1 = mp_obj_get_int(args[2]);
+            if (n_args > 3) {
+                apb2 = mp_obj_get_int(args[3]);
+            }
+        }
+    }
+    int ret = powerctrl_set_sysclk(sysclk, ahb, apb1, apb2);
+    if (ret == -MP_EINVAL) {
+        mp_raise_ValueError(MP_ERROR_TEXT("unsupported freq or bus divider"));
+    } else if (ret == -MP_EBUSY) {
+        mp_raise_OSError(MP_EBUSY);
+    } else if (ret < 0) {
+        mp_raise_OSError(-ret);
+    }
     #elif defined(STM32F0) || defined(STM32L0) || defined(STM32L1) || defined(STM32L4) || defined(STM32G0) || defined(STM32N6)
     mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.freq set not supported yet"));
     #else
@@ -431,9 +452,24 @@ static void mp_machine_idle(void) {
 static void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
     #if defined(STM32C5)
     if (n_args != 0) {
-        mp_raise_NotImplementedError(MP_ERROR_TEXT("timed lightsleep requires RTC wakeup support"));
+        mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};
+        pyb_rtc_wakeup(2, args2);
     }
-    HAL_PWR_EnterSleepMode(HAL_PWR_LOW_PWR_MODE_WFI);
+    int ret = powerctrl_c5_enter_stop_mode();
+    if (ret < 0) {
+        if (n_args != 0) {
+            mp_obj_t args2[2] = {MP_OBJ_NULL, mp_const_none};
+            pyb_rtc_wakeup(2, args2);
+        }
+        if (ret == -MP_EBUSY) {
+            mp_raise_OSError(MP_EBUSY);
+        }
+        mp_raise_OSError(-ret);
+    }
+    if (n_args != 0) {
+        mp_obj_t args2[2] = {MP_OBJ_NULL, mp_const_none};
+        pyb_rtc_wakeup(2, args2);
+    }
     #else
     if (n_args != 0) {
         mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};
@@ -445,9 +481,11 @@ static void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
 
 static void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
     #if defined(STM32C5)
-    (void)n_args;
-    (void)args;
-    mp_raise_NotImplementedError(MP_ERROR_TEXT("machine.deepsleep is not supported on STM32C5"));
+    if (n_args != 0) {
+        mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};
+        pyb_rtc_wakeup(2, args2);
+    }
+    powerctrl_enter_standby_mode();
     #else
     if (n_args != 0) {
         mp_obj_t args2[2] = {MP_OBJ_NULL, args[0]};

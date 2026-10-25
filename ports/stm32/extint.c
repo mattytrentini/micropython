@@ -371,6 +371,9 @@ uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t ca
         if (v_line >= EXTI_NUM_VECTORS) {
             mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("ExtInt vector %d >= max of %d"), v_line, EXTI_NUM_VECTORS);
         }
+#if defined(STM32C5)
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("internal ExtInt lines unavailable"));
+#endif
     } else {
         pin = pin_find(pin_obj);
         v_line = pin->pin;
