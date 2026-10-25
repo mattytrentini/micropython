@@ -148,7 +148,7 @@
 #define MICROPY_PY_MACHINE_CAN_INCLUDEFILE "ports/stm32/machine_can.c"
 #define MICROPY_PY_MACHINE_DHT_READINTO (1)
 // Backup memory via BKPSRAM or RTC BKP registers.
-#if MICROPY_HW_ENABLE_RTC
+#if MICROPY_HW_ENABLE_RTC || defined(STM32C5)
 #ifndef MICROPY_PY_MACHINE_MEM_BACKUP
 #define MICROPY_PY_MACHINE_MEM_BACKUP (1)
 #endif

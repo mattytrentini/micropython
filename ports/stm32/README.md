@@ -216,6 +216,10 @@ The boards use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 on both boards, connecting
 to the XIAO's onboard IMU. Target mode is not enabled.
 Zero-length reads return an empty result without a bus transaction; zero-length
 writes still address the target.
+`machine.mem_backup()` exposes the C5 TAMP backup-register bank as 32
+four-byte words. The register bank is not cleared during MicroPython startup;
+it retains values while the RTC backup domain remains powered.
+
 
 `machine.time_pulse_us()` uses the Cortex-M cycle counter for pulse timing;
 timeouts are returned as negative values as in the common machine API.

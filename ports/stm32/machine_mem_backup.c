@@ -64,6 +64,8 @@
 #define STM32_BKP_REG_COUNT RTC_BACKUP_NB
 #elif defined(RTC_BKP_NB)
 #define STM32_BKP_REG_COUNT RTC_BKP_NB
+#elif defined(TAMP_BACKUP_NB)
+#define STM32_BKP_REG_COUNT TAMP_BACKUP_NB
 #endif
 
 #if defined(STM32_BKP_REG_COUNT)
@@ -92,8 +94,12 @@ static const mp_obj_array_t machine_mem_backup_regions[] = {
     BACKUP_MV('I', STM32_BKP_REG_COUNT, STM32_BKP_REG_ADDR),
 };
 #endif
-
 void machine_mem_backup_init(void) {
+    #if defined(STM32C5)
+    // C5 backup registers are part of the RTC domain and exposed through TAMP.
+    HAL_RCC_RTCAPB_EnableClock();
+    HAL_PWR_DisableRTCDomainWriteProtection();
+    #endif
     #if defined(STM32_BKPSRAM_BASE)
     #if defined(RCC_AHB1ENR_BKPSRAMEN)
     // F4, F7, U5: BKPSRAM clock on AHB1.

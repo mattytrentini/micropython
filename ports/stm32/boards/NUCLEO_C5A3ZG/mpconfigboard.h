@@ -3,7 +3,7 @@
 
 #define MICROPY_PY_PYB_LEGACY               (0)
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
-#define MICROPY_PY_MACHINE_MEM_BACKUP       (0)
+#define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
 #define MICROPY_HW_ENABLE_RTC               (0)
 #define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_ENABLE_ADC               (0) // TODO: enable once ADC driver adapted

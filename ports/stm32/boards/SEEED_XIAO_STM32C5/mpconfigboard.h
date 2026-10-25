@@ -2,7 +2,7 @@
 #define MICROPY_HW_MCU_NAME                 "STM32C5A3CG"
 
 #define MICROPY_PY_PYB_LEGACY               (0)
-#define MICROPY_PY_MACHINE_MEM_BACKUP       (0)
+#define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
 #define MICROPY_HW_HAS_FLASH                (0)
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
 #define MICROPY_HW_HAS_SWITCH               (0)
