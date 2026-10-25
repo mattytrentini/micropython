@@ -7,7 +7,7 @@
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
 #define MICROPY_HW_HAS_SWITCH               (0)
 #define MICROPY_HW_ENABLE_RTC               (0)
-#define MICROPY_HW_ENABLE_RNG               (0)
+#define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_ENABLE_ADC               (0)
 #define MICROPY_HW_ENABLE_DAC               (0)
 // 48 MHz HSE crystal, with PSI generating a 144 MHz system clock.
