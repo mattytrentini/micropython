@@ -213,3 +213,11 @@ remain disabled on C5.
 `machine.I2C` provides the polling controller interface on I2C1 and I2C2.
 The boards use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 on both boards, connecting
 to the XIAO's onboard IMU. Target mode is not enabled.
+Zero-length reads return an empty result without a bus transaction; zero-length
+writes still address the target.
+
+`machine.time_pulse_us()` uses the Cortex-M cycle counter for pulse timing;
+timeouts are returned as negative values as in the common machine API.
+`machine.bitstream()` and the frozen `neopixel.NeoPixel` driver use the same
+cycle counter for cycle-accurate output. The feature tests use a timer-driven
+input pulse and verify the NeoPixel buffer and idle pin state.
