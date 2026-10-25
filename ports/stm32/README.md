@@ -209,3 +209,7 @@ The current backend supports 8- and 16-bit frames, all CPOL/CPHA modes, and
 software-managed transfer lengths beyond the hardware counter limit. SPI3 is
 configured on PB3/PB4/PB5 for the Nucleo. DMA and the legacy `pyb.SPI` API
 remain disabled on C5.
+
+`machine.I2C` provides the polling controller interface on I2C1 and I2C2.
+The boards use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 on both boards, connecting
+to the XIAO's onboard IMU. Target mode is not enabled.

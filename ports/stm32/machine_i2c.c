@@ -34,7 +34,7 @@
 
 #define I2C_POLL_DEFAULT_TIMEOUT_US (50000) // 50ms
 
-#if defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32G4) || defined(STM32H7) || defined(STM32L1) || defined(STM32L4) || defined(STM32U5)
+#if defined(STM32C5) || defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32G4) || defined(STM32H7) || defined(STM32L1) || defined(STM32L4) || defined(STM32U5)
 
 typedef struct _machine_hard_i2c_obj_t {
     mp_obj_base_t base;
@@ -94,8 +94,17 @@ static void machine_hard_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp
 }
 
 void machine_hard_i2c_init(machine_hard_i2c_obj_t *self, uint32_t freq, uint32_t timeout_us) {
-    uint32_t timeout_ms = (timeout_us + 999) / 1000;
-    i2c_init(self->i2c, self->scl, self->sda, freq, timeout_ms);
+    #if defined(STM32C5)
+    // The polling driver stores deadlines in whole milliseconds in a uint16_t.
+    if ((int32_t)freq < 100000 || timeout_us > 65535000) {
+        mp_raise_OSError(MP_EINVAL);
+    }
+    #endif
+    uint32_t timeout_ms = timeout_us / 1000 + (timeout_us % 1000 != 0);
+    int ret = i2c_init(self->i2c, self->scl, self->sda, freq, timeout_ms);
+    if (ret < 0) {
+        mp_raise_OSError(-ret);
+    }
 }
 
 int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags) {
@@ -110,9 +119,20 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
     if (ret < 0) {
         return ret;
     }
+    #if defined(STM32C5)
+    if (remain_len == 0) {
+        return i2c_write(self->i2c, NULL, 0, 0);
+    }
+    #endif
 
     int num_acks = 0; // only valid for write; for read it'll be 0
     for (; n--; ++bufs) {
+        #if defined(STM32C5)
+        // Empty vector entries must not consume the first-byte state or reload CR2.
+        if (bufs->len == 0) {
+            continue;
+        }
+        #endif
         remain_len -= bufs->len;
         if (flags & MP_MACHINE_I2C_FLAG_READ) {
             ret = i2c_read(self->i2c, bufs->buf, bufs->len, remain_len);
@@ -123,6 +143,11 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
             return ret;
         }
         num_acks += ret;
+        #if defined(STM32C5)
+        if (!(flags & MP_MACHINE_I2C_FLAG_READ) && (size_t)ret < bufs->len) {
+            return num_acks;
+        }
+        #endif
     }
 
     return num_acks;
@@ -182,10 +207,43 @@ static void machine_hard_i2c_init(machine_hard_i2c_obj_t *self, uint32_t freq, u
 /******************************************************************************/
 /* MicroPython bindings for machine API                                       */
 
-#if defined(STM32F0) || defined(STM32F7) || defined(STM32H7) || defined(STM32L4) || defined(STM32U5)
+#if defined(STM32C5) || defined(STM32F0) || defined(STM32F7) || defined(STM32H7) || defined(STM32L4) || defined(STM32U5)
 #define MACHINE_I2C_TIMINGR (1)
 #else
 #define MACHINE_I2C_TIMINGR (0)
+#endif
+
+#if defined(STM32C5)
+static void machine_hard_i2c_init_protocol(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    machine_hard_i2c_obj_t *self = (machine_hard_i2c_obj_t *)self_in;
+    enum { ARG_freq, ARG_timeout, ARG_timingr };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 400000} },
+        { MP_QSTR_timeout, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = I2C_POLL_DEFAULT_TIMEOUT_US} },
+        { MP_QSTR_timingr, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+    };
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+    machine_hard_i2c_init(self, args[ARG_freq].u_int, args[ARG_timeout].u_int);
+    if (args[ARG_timingr].u_obj != mp_const_none) {
+        self->i2c->TIMINGR = mp_obj_get_int_truncated(args[ARG_timingr].u_obj);
+    }
+}
+
+static void machine_hard_i2c_deinit(mp_obj_base_t *self_in) {
+    machine_hard_i2c_obj_t *self = (machine_hard_i2c_obj_t *)self_in;
+    i2c_deinit_controller(self->i2c);
+    mp_hal_pin_config(self->scl, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
+    mp_hal_pin_config(self->sda, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
+}
+
+void machine_hard_i2c_deinit_all(void) {
+    for (size_t i = 0; i < MP_ARRAY_SIZE(machine_hard_i2c_obj); ++i) {
+        if (machine_hard_i2c_obj[i].i2c != NULL) {
+            machine_hard_i2c_deinit((mp_obj_base_t *)&machine_hard_i2c_obj[i]);
+        }
+    }
+}
 #endif
 
 mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
@@ -229,6 +287,10 @@ mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, siz
 }
 
 static const mp_machine_i2c_p_t machine_hard_i2c_p = {
+    #if defined(STM32C5)
+    .init = machine_hard_i2c_init_protocol,
+    .deinit = machine_hard_i2c_deinit,
+    #endif
     .transfer = machine_hard_i2c_transfer,
 };
 

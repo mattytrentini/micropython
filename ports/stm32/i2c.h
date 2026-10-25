@@ -67,4 +67,9 @@ int i2c_writeto(i2c_t *i2c, uint16_t addr, const uint8_t *src, size_t len, bool 
 
 int i2c_find_peripheral(mp_obj_t id);
 
+#if defined(STM32C5)
+void i2c_deinit_controller(i2c_t *i2c);
+void machine_hard_i2c_deinit_all(void);
+#endif
+
 #endif // MICROPY_INCLUDED_STM32_I2C_H

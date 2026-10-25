@@ -772,6 +772,9 @@ soft_reset_exit:
     #if MICROPY_PY_PYB_LEGACY && MICROPY_HW_ENABLE_HW_I2C
     pyb_i2c_deinit_all();
     #endif
+    #if defined(STM32C5) && MICROPY_HW_ENABLE_HW_I2C
+    machine_hard_i2c_deinit_all();
+    #endif
     #if MICROPY_PY_MACHINE_I2C_TARGET
     mp_machine_i2c_target_deinit_all();
     #endif

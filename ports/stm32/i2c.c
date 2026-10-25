@@ -33,6 +33,12 @@
 
 #if MICROPY_HW_ENABLE_HW_I2C
 
+#if defined(STM32C5)
+#include "stm32c5xx_ll_bus.h"
+#include "stm32c5xx_ll_i2c.h"
+#include "stm32c5xx_ll_rcc.h"
+#endif
+
 #if defined(STM32F4) || defined(STM32L1)
 
 static uint16_t i2c_timeout_ms[MICROPY_HW_MAX_I2C];
@@ -271,7 +277,7 @@ int i2c_write(i2c_t *i2c, const uint8_t *src, size_t len, size_t next_len) {
     return num_acks;
 }
 
-#elif defined(STM32F0) || defined(STM32F7) || defined(STM32G4) || defined(STM32H7) || defined(STM32L4) || defined(STM32U5)
+#elif defined(STM32C5) || defined(STM32F0) || defined(STM32F7) || defined(STM32G4) || defined(STM32H7) || defined(STM32L4) || defined(STM32U5)
 
 #if defined(STM32H7)
 #define APB1ENR            APB1LENR
@@ -294,6 +300,23 @@ static uint32_t i2c_get_id(i2c_t *i2c) {
 
 int i2c_init(i2c_t *i2c, mp_hal_pin_obj_t scl, mp_hal_pin_obj_t sda, uint32_t freq, uint16_t timeout_ms) {
     uint32_t i2c_id = i2c_get_id(i2c);
+    #if defined(STM32C5)
+    // C5 boards use PCLK1 at 144 MHz, analog filtering enabled and DNF=0.
+    // These timings allow the I2C rise/fall limits and the 50..160 ns filter delay.
+    if (HAL_RCC_GetPCLK1Freq() != 144000000) {
+        return -MP_EOPNOTSUPP;
+    }
+    uint32_t timing;
+    if (freq >= 1000000) {
+        timing = LL_I2C_CONVERT_TIMINGS(3, 6, 4, 17, 17);
+    } else if (freq >= 400000) {
+        timing = LL_I2C_CONVERT_TIMINGS(7, 7, 5, 17, 26);
+    } else if (freq >= 100000) {
+        timing = LL_I2C_CONVERT_TIMINGS(15, 11, 3, 44, 44);
+    } else {
+        return -MP_EINVAL;
+    }
+    #endif
 
     // Init pins
     if (!mp_hal_pin_config_alt(scl, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_UP, AF_FN_I2C, i2c_id + 1)) {
@@ -307,6 +330,14 @@ int i2c_init(i2c_t *i2c, mp_hal_pin_obj_t scl, mp_hal_pin_obj_t sda, uint32_t fr
     i2c_timeout_ms[i2c_id] = timeout_ms;
 
     // Enable I2C peripheral clock
+    #if defined(STM32C5)
+    LL_RCC_SetI2CClockSource(i2c_id == 0 ? LL_RCC_I2C1_CLKSOURCE_PCLK1 : LL_RCC_I2C2_CLKSOURCE_PCLK1);
+    uint32_t clock = LL_APB1_GRP1_PERIPH_I2C1 << i2c_id;
+    LL_APB1_GRP1_EnableClock(clock);
+    LL_APB1_GRP1_EnableClockLowPower(clock);
+    LL_APB1_GRP1_ForceReset(clock);
+    LL_APB1_GRP1_ReleaseReset(clock);
+    #else
     volatile uint32_t tmp;
     (void)tmp;
     #if defined(STM32H7)
@@ -319,6 +350,7 @@ int i2c_init(i2c_t *i2c, mp_hal_pin_obj_t scl, mp_hal_pin_obj_t sda, uint32_t fr
         RCC->APB1ENR |= RCC_APB1ENR_I2C1EN << i2c_id;
         tmp = RCC->APB1ENR; // delay after RCC clock enable
     }
+    #endif
 
     // Initialise I2C peripheral
     i2c->CR1 = 0;
@@ -326,7 +358,12 @@ int i2c_init(i2c_t *i2c, mp_hal_pin_obj_t scl, mp_hal_pin_obj_t sda, uint32_t fr
     i2c->OAR1 = 0;
     i2c->OAR2 = 0;
 
-    #if defined(STM32L4)
+    #if defined(STM32C5)
+    i2c->TIMINGR = timing;
+    if (freq >= 1000000) {
+        LL_I2C_EnableFastModePlus(i2c);
+    }
+    #elif defined(STM32L4)
     // These timing values are with f_I2CCLK=80MHz and are only approximate
     if (freq >= 1000000) {
         i2c->TIMINGR = 0x00300F33;
@@ -365,34 +402,70 @@ int i2c_init(i2c_t *i2c, mp_hal_pin_obj_t scl, mp_hal_pin_obj_t sda, uint32_t fr
     return 0;
 }
 
+#if defined(STM32C5)
+void i2c_deinit_controller(i2c_t *i2c) {
+    uint32_t clock = LL_APB1_GRP1_PERIPH_I2C1 << i2c_get_id(i2c);
+    if (LL_APB1_GRP1_IsEnabledClock(clock)) {
+        i2c->CR1 = 0;
+        LL_APB1_GRP1_ForceReset(clock);
+        LL_APB1_GRP1_ReleaseReset(clock);
+        LL_APB1_GRP1_DisableClockLowPower(clock);
+        LL_APB1_GRP1_DisableClock(clock);
+    }
+}
+#endif
+
 static int i2c_wait_cr2_clear(i2c_t *i2c, uint32_t mask) {
     uint32_t i2c_id = i2c_get_id(i2c);
 
     uint32_t t0 = HAL_GetTick();
-    while (i2c->CR2 & mask) {
+    for (;;) {
+        #if defined(STM32C5)
+        if (i2c->ISR & (I2C_ISR_BERR | I2C_ISR_ARLO)) {
+            i2c->ICR = I2C_ICR_BERRCF | I2C_ICR_ARLOCF;
+            i2c->CR1 &= ~I2C_CR1_PE;
+            return -MP_EIO;
+        }
+        #endif
+        if (!(i2c->CR2 & mask)) {
+            return 0;
+        }
         if (HAL_GetTick() - t0 >= i2c_timeout_ms[i2c_id]) {
             i2c->CR1 &= ~I2C_CR1_PE;
             return -MP_ETIMEDOUT;
         }
     }
-    return 0;
 }
 
 static int i2c_wait_isr_set(i2c_t *i2c, uint32_t mask) {
     uint32_t i2c_id = i2c_get_id(i2c);
 
     uint32_t t0 = HAL_GetTick();
-    while (!(i2c->ISR & mask)) {
+    for (;;) {
+        #if defined(STM32C5)
+        if (i2c->ISR & (I2C_ISR_BERR | I2C_ISR_ARLO)) {
+            i2c->ICR = I2C_ICR_BERRCF | I2C_ICR_ARLOCF;
+            i2c->CR1 &= ~I2C_CR1_PE;
+            return -MP_EIO;
+        }
+        #endif
+        if (i2c->ISR & mask) {
+            return 0;
+        }
         if (HAL_GetTick() - t0 >= i2c_timeout_ms[i2c_id]) {
             i2c->CR1 &= ~I2C_CR1_PE;
             return -MP_ETIMEDOUT;
         }
     }
-    return 0;
 }
 
 // len = 0, 1 or N
 int i2c_start_addr(i2c_t *i2c, int rd_wrn, uint16_t addr, size_t len, bool stop) {
+    #if defined(STM32C5)
+    if (!LL_APB1_GRP1_IsEnabledClock(LL_APB1_GRP1_PERIPH_I2C1 << i2c_get_id(i2c))) {
+        return -MP_ENODEV;
+    }
+    #endif
     // Enable the peripheral and send the START condition with slave address
     i2c->CR1 |= I2C_CR1_PE;
     i2c->CR2 = (len > 1) << I2C_CR2_RELOAD_Pos
@@ -441,6 +514,11 @@ static int i2c_check_stop(i2c_t *i2c) {
 
 // next_len = 0 or N
 int i2c_read(i2c_t *i2c, uint8_t *dest, size_t len, size_t next_len) {
+    #if defined(STM32C5)
+    if (len == 0) {
+        return next_len ? 0 : i2c_check_stop(i2c);
+    }
+    #endif
     if (i2c->OAR1) {
         i2c->OAR1 = 0;
     } else {
@@ -474,6 +552,11 @@ int i2c_read(i2c_t *i2c, uint8_t *dest, size_t len, size_t next_len) {
 
 // next_len = 0 or N
 int i2c_write(i2c_t *i2c, const uint8_t *src, size_t len, size_t next_len) {
+    #if defined(STM32C5)
+    if (len == 0) {
+        return next_len ? 0 : i2c_check_stop(i2c);
+    }
+    #endif
     int num_acks = 0;
 
     if (i2c->OAR1) {
@@ -499,6 +582,12 @@ int i2c_write(i2c_t *i2c, const uint8_t *src, size_t len, size_t next_len) {
                 // The TXDR is still full so the byte previous to that wasn't actually ACK'd
                 --num_acks;
             }
+            #if defined(STM32C5)
+            // NACK generates STOP even without AUTOEND, including between vector buffers.
+            ret = i2c_wait_isr_set(i2c, I2C_ISR_STOPF);
+            i2c->CR1 &= ~I2C_CR1_PE;
+            return ret < 0 ? ret : num_acks;
+            #endif
             break;
         }
         ++num_acks;
@@ -522,7 +611,7 @@ int i2c_write(i2c_t *i2c, const uint8_t *src, size_t len, size_t next_len) {
 
 #endif
 
-#if defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32U5)
+#if defined(STM32C5) || defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32U5)
 
 int i2c_readfrom(i2c_t *i2c, uint16_t addr, uint8_t *dest, size_t len, bool stop) {
     int ret;

@@ -198,6 +198,7 @@ static inline void HAL_GPIO_DeInit_Compat(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin
 #define GPIO_AF8_UART5      HAL_GPIO_AF_8
 #define GPIO_AF9_FDCAN1     HAL_GPIO_AF_9
 #define GPIO_AF9_FDCAN2     HAL_GPIO_AF_9
+#define GPIO_AF9_I2C2       HAL_GPIO_AF_9
 #define GPIO_AF10_USB       HAL_GPIO_AF_10
 #define GPIO_AF14_TIM2      HAL_GPIO_AF_14
 #define GPIO_AF15_EVENTOUT  HAL_GPIO_AF_15

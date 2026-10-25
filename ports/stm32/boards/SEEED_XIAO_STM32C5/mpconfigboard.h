@@ -34,6 +34,11 @@
 #define MICROPY_HW_SPI3_MISO                (pin_B0)
 #define MICROPY_HW_SPI3_MOSI                (pin_B15)
 
+#define MICROPY_HW_I2C1_SCL                  (pin_B6)
+#define MICROPY_HW_I2C1_SDA                  (pin_B7)
+#define MICROPY_HW_I2C2_SCL                  (pin_B3)
+#define MICROPY_HW_I2C2_SDA                  (pin_B4)
+
 
 // Green user LED, active low.
 #define MICROPY_HW_LED1                     (pin_B12)
