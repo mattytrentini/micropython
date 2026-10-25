@@ -221,6 +221,12 @@ software-managed transfer lengths beyond the hardware counter limit. The XIAO
 SPI3 routes D8/D9/D10 to PE2/PB0/PB15; the Nucleo uses PB3/PB4/PB5. These
 alternate functions were checked against ST DS15137 Table 14. DMA and the
 legacy `pyb.SPI` API remain disabled on C5.
+`machine.I2S` supports I2S1 master transmit and receive on the Nucleo board.
+Pass the I2S1 clock, word-select and data pins explicitly; the alternate
+functions are provided for PA4/PA5/PA6/PA7 and PB3/PB4/PB5. PA5 is also the
+on-board LED, and PB3/PB4/PB5 are used by the board's SPI3 configuration.
+An external codec or audio device is required; no audio loopback is wired on
+the board.
 
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
 use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.

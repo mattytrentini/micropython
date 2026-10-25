@@ -233,7 +233,9 @@ def main():
             ts_outfile = result.timestamp
         ts_newest = max(ts_newest, ts_outfile)
 
-    # Check if output file needs generating
+    # The firmware qstr pool determines which qstrs are embedded in frozen
+    # modules, so regenerate frozen content when qstr definitions change.
+    ts_newest = max(ts_newest, get_timestamp(args.build_dir + "/genhdr/qstrdefs.preprocessed.h", 0))
     if ts_newest < get_timestamp(args.output, 0):
         # No files are newer than output file so it does not need updating
         return

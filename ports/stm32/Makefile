@@ -356,6 +356,7 @@ HAL_SRC_C += $(addprefix $(STM32LIB_HAL_BASE)/Src/stm32$(MCU_SERIES)xx_,\
 	hal_flash_itf.c \
 	hal_gpio.c \
 	hal_i2c.c \
+	hal_i2s.c \
 	hal_icache.c \
 	hal_pwr.c \
 	hal_rcc.c \

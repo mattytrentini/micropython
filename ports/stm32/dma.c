@@ -36,48 +36,362 @@
 #include "mpu.h"
 
 #if defined(STM32C5)
-// STM32C5 uses LPDMA which has a completely different API.
-// Provide stub implementations for now - DMA is not used in Phase 1.
+#include <errno.h>
+#include "dma_c5.h"
+#include "stm32c5xx_ll_bus.h"
+#include "stm32c5xx_ll_rcc.h"
 
-void dma_init(DMA_HandleTypeDef *dma, const dma_descr_t *dma_descr, uint32_t dir, void *data) {
-    (void)dma;
-    (void)dma_descr;
-    (void)dir;
-    (void)data;
+#define C5_DMA_CHANNELS (16)
+#define C5_DMA_STOP_TIMEOUT_MS (5)
+#define C5_DMA_ERROR_FLAGS (LL_DMA_FLAG_DTE | LL_DMA_FLAG_ULE | LL_DMA_FLAG_USE | LL_DMA_FLAG_TO)
+
+// LPDMA1 request IDs and channels from the STM32C5 reference manual.
+const dma_descr_t dma_I2S_1_RX = { 0, LL_LPDMA1_REQUEST_SPI1_RX };
+const dma_descr_t dma_I2S_1_TX = { 1, LL_LPDMA1_REQUEST_SPI1_TX };
+
+typedef struct {
+    DMA_Channel_TypeDef *channel;
+    const dma_descr_t * volatile descr;
+    dma_irq_callback_t volatile callback;
+    volatile uint32_t irq_flags;
+    uint32_t ctr1;
+    uint32_t ctr2;
+    uint32_t config;
+    volatile uint8_t claimed;
+    volatile uint8_t running;
+    volatile uint8_t circular;
+    volatile uint8_t completed;
+    volatile uint8_t error;
+} c5_dma_state_t;
+
+typedef struct __attribute__((aligned(32))) {
+    uint32_t regs[LL_DMA_NODE_REGISTER_NUM];
+    uint32_t info;
+} c5_dma_node_t;
+
+static c5_dma_state_t c5_dma[C5_DMA_CHANNELS];
+static c5_dma_node_t c5_nodes[C5_DMA_CHANNELS] __attribute__((aligned(32)));
+
+static DMA_Channel_TypeDef *c5_dma_channel(const dma_descr_t *descr) {
+    if (descr == NULL || descr->channel >= C5_DMA_CHANNELS) {
+        return NULL;
+    }
+    uint32_t index = descr->channel & 7;
+    uintptr_t base = descr->channel < 8 ? (uintptr_t)LPDMA1 : (uintptr_t)LPDMA2;
+    return (DMA_Channel_TypeDef *)(base + 0x50 + index * 0x80);
 }
-void dma_init_handle(DMA_HandleTypeDef *dma, const dma_descr_t *dma_descr, uint32_t dir, void *data) {
-    (void)dma;
-    (void)dma_descr;
-    (void)dir;
-    (void)data;
+
+static void c5_dma_irq_enable(uint32_t index, int enable) {
+    switch (index) {
+        #define C5_DMA_IRQ_CASE(ch, irq) case ch: \
+            NVIC_DisableIRQ(irq); \
+            NVIC_ClearPendingIRQ(irq); \
+            if (enable) { \
+                NVIC_SetPriority(irq, IRQ_PRI_DMA); \
+                NVIC_EnableIRQ(irq); \
+            } \
+            break
+        C5_DMA_IRQ_CASE(0, LPDMA1_CH0_IRQn);
+        C5_DMA_IRQ_CASE(1, LPDMA1_CH1_IRQn);
+        C5_DMA_IRQ_CASE(2, LPDMA1_CH2_IRQn);
+        C5_DMA_IRQ_CASE(3, LPDMA1_CH3_IRQn);
+        C5_DMA_IRQ_CASE(8, LPDMA2_CH0_IRQn);
+        C5_DMA_IRQ_CASE(9, LPDMA2_CH1_IRQn);
+        C5_DMA_IRQ_CASE(10, LPDMA2_CH2_IRQn);
+        C5_DMA_IRQ_CASE(11, LPDMA2_CH3_IRQn);
+        #if defined(LPDMA1_CH4)
+        C5_DMA_IRQ_CASE(4, LPDMA1_CH4_IRQn);
+        C5_DMA_IRQ_CASE(5, LPDMA1_CH5_IRQn);
+        C5_DMA_IRQ_CASE(6, LPDMA1_CH6_IRQn);
+        C5_DMA_IRQ_CASE(7, LPDMA1_CH7_IRQn);
+        #endif
+        #if defined(LPDMA2_CH4)
+        C5_DMA_IRQ_CASE(12, LPDMA2_CH4_IRQn);
+        C5_DMA_IRQ_CASE(13, LPDMA2_CH5_IRQn);
+        C5_DMA_IRQ_CASE(14, LPDMA2_CH6_IRQn);
+        C5_DMA_IRQ_CASE(15, LPDMA2_CH7_IRQn);
+        #endif
+        #undef C5_DMA_IRQ_CASE
+    }
 }
-void dma_deinit(const dma_descr_t *dma_descr) {
-    (void)dma_descr;
+
+static bool c5_dma_widths(const c5_dma_state_t *state, size_t *src_width, size_t *dest_width) {
+    uint32_t src = state->ctr1 & DMA_CTR1_SDW_LOG2;
+    uint32_t dest = state->ctr1 & DMA_CTR1_DDW_LOG2;
+    switch (src) {
+        case LL_DMA_SRC_DATA_WIDTH_BYTE: *src_width = 1; break;
+        case LL_DMA_SRC_DATA_WIDTH_HALFWORD: *src_width = 2; break;
+        case LL_DMA_SRC_DATA_WIDTH_WORD: *src_width = 4; break;
+        default: return false;
+    }
+    switch (dest) {
+        case LL_DMA_DEST_DATA_WIDTH_BYTE: *dest_width = 1; break;
+        case LL_DMA_DEST_DATA_WIDTH_HALFWORD: *dest_width = 2; break;
+        case LL_DMA_DEST_DATA_WIDTH_WORD: *dest_width = 4; break;
+        default: return false;
+    }
+    return true;
 }
-void dma_invalidate_channel(const dma_descr_t *dma_descr) {
-    (void)dma_descr;
+
+static bool c5_dma_transfer_valid(const c5_dma_state_t *state, const void *src, const void *dest, size_t nbytes) {
+    size_t src_width, dest_width;
+    return c5_dma_widths(state, &src_width, &dest_width)
+        && nbytes % src_width == 0
+        && (uintptr_t)src % src_width == 0
+        && (uintptr_t)dest % dest_width == 0;
 }
-void dma_nohal_init(const dma_descr_t *descr, uint32_t config) {
-    (void)descr;
-    (void)config;
+
+static c5_dma_state_t *c5_dma_get(const dma_descr_t *descr) {
+    DMA_Channel_TypeDef *channel = c5_dma_channel(descr);
+    if (channel == NULL) {
+        return NULL;
+    }
+    c5_dma_state_t *state = &c5_dma[descr->channel];
+    return state->claimed && state->descr == descr ? state : NULL;
 }
-void dma_nohal_deinit(const dma_descr_t *descr) {
-    (void)descr;
+
+void dma_init0(void) {
+    for (uint32_t i = 0; i < C5_DMA_CHANNELS; ++i) {
+        if (c5_dma[i].claimed) {
+            if (dma_deinit(c5_dma[i].descr) != 0) {
+                continue;
+            }
+        }
+        memset(&c5_dma[i], 0, sizeof(c5_dma[i]));
+        memset(&c5_nodes[i], 0, sizeof(c5_nodes[i]));
+    }
 }
-void dma_nohal_start(const dma_descr_t *descr, uint32_t src_addr, uint32_t dst_addr, uint16_t len) {
-    (void)descr;
-    (void)src_addr;
-    (void)dst_addr;
-    (void)len;
+
+int dma_deinit_all(void) {
+    int status = 0;
+    for (uint32_t i = 0; i < C5_DMA_CHANNELS; ++i) {
+        if (c5_dma[i].claimed) {
+            int ret = dma_deinit(c5_dma[i].descr);
+            if (ret != 0 && status == 0) {
+                status = ret;
+            }
+        }
+    }
+    return status;
 }
-void dma_external_acquire(uint32_t controller, uint32_t stream) {
-    (void)controller;
-    (void)stream;
+
+int dma_init(const dma_descr_t *descr, uint32_t ctr1, uint32_t ctr2, uint32_t config) {
+    DMA_Channel_TypeDef *channel = c5_dma_channel(descr);
+    if (channel == NULL || descr->request > (DMA_CTR2_REQSEL >> DMA_CTR2_REQSEL_Pos)
+        || (config & ~DMA_CIRCULAR)) {
+        return -EINVAL;
+    }
+    c5_dma_state_t *state = &c5_dma[descr->channel];
+    if (state->claimed) {
+        return -EBUSY;
+    }
+    c5_dma_irq_enable(descr->channel, 0);
+    if (descr->channel < 8) {
+        LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_LPDMA1);
+    } else {
+        LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_LPDMA2);
+    }
+    memset(state, 0, sizeof(*state));
+    state->channel = channel;
+    state->descr = descr;
+    state->ctr1 = ctr1;
+    state->ctr2 = (ctr2 & ~DMA_CTR2_REQSEL) | ((uint32_t)descr->request << DMA_CTR2_REQSEL_Pos);
+    state->config = config;
+    state->claimed = 1;
+    LL_DMA_DisableIT(channel, LL_DMA_IT_ALL);
+    LL_DMA_ClearFlag(channel, LL_DMA_FLAG_ALL);
+    channel->CTR1 = ctr1;
+    channel->CTR2 = state->ctr2;
+    channel->CLLR = 0;
+    return 0;
 }
-void dma_external_release(uint32_t controller, uint32_t stream) {
-    (void)controller;
-    (void)stream;
+
+int dma_start(const dma_descr_t *descr, const void *src, void *dest, size_t nbytes) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL || src == NULL || dest == NULL || nbytes == 0 || nbytes > 0xffff
+        || !c5_dma_transfer_valid(state, src, dest, nbytes)) {
+        return -EINVAL;
+    }
+    if (state->running) {
+        return -EBUSY;
+    }
+    if (state->config & DMA_CIRCULAR) {
+        return -ENOTSUP;
+    }
+    DMA_Channel_TypeDef *channel = state->channel;
+    LL_DMA_ClearFlag(channel, LL_DMA_FLAG_ALL);
+    c5_dma_irq_enable(descr->channel, 0);
+    LL_DMA_SetSrcAddress(channel, (uint32_t)(uintptr_t)src);
+    LL_DMA_SetDestAddress(channel, (uint32_t)(uintptr_t)dest);
+    LL_DMA_SetBlkDataLength(channel, nbytes);
+    state->completed = 0;
+    state->error = 0;
+    state->running = 1;
+    __DMB();
+    if (state->callback != NULL) {
+        LL_DMA_EnableIT(channel, state->irq_flags | C5_DMA_ERROR_FLAGS);
+        c5_dma_irq_enable(descr->channel, 1);
+    }
+    LL_DMA_EnableChannel(channel);
+    return 0;
 }
+ 
+int dma_start_ping_pong(const dma_descr_t *descr, const void *src, void *dest, size_t half_nbytes) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL || src == NULL || dest == NULL || half_nbytes == 0 || half_nbytes > 0x7fff
+        || !c5_dma_transfer_valid(state, src, dest, half_nbytes)) {
+        return -EINVAL;
+    }
+    if (state->running || !(state->config & DMA_CIRCULAR)) {
+        return -EBUSY;
+    }
+    if (state->callback == NULL) {
+        return -EINVAL;
+    }
+    c5_dma_node_t *node = &c5_nodes[descr->channel];
+    node->regs[LL_DMA_NODE_CTR1_REG_OFFSET] = state->ctr1;
+    node->regs[LL_DMA_NODE_CTR2_REG_OFFSET] = state->ctr2;
+    node->regs[LL_DMA_NODE_CBR1_REG_OFFSET] = half_nbytes * 2;
+    node->regs[LL_DMA_NODE_CSAR_REG_OFFSET] = (uint32_t)(uintptr_t)src;
+    node->regs[LL_DMA_NODE_CDAR_REG_OFFSET] = (uint32_t)(uintptr_t)dest;
+    node->regs[LL_DMA_NODE_CLLR_REG_OFFSET] = ((uint32_t)(uintptr_t)node & DMA_CLLR_LA) | LL_DMA_UPDATE_ALL;
+    MP_HAL_CLEAN_DCACHE(node, sizeof(*node));
+    __DMB();
+    DMA_Channel_TypeDef *channel = state->channel;
+    LL_DMA_ClearFlag(channel, LL_DMA_FLAG_ALL);
+    c5_dma_irq_enable(descr->channel, 0);
+    LL_DMA_SetLinkedListBaseAddr(channel, (uint32_t)(uintptr_t)node);
+    LL_DMA_ConfigLinkUpdate(channel, LL_DMA_UPDATE_ALL, (uint32_t)(uintptr_t)node);
+    LL_DMA_SetBlkDataLength(channel, 0);
+    state->circular = 1;
+    state->running = 1;
+    state->error = 0;
+    state->completed = 0;
+    LL_DMA_EnableIT(channel, state->irq_flags | C5_DMA_ERROR_FLAGS);
+    __DMB();
+    c5_dma_irq_enable(descr->channel, 1);
+    LL_DMA_EnableChannel(channel);
+    return 0;
+}
+
+int dma_status(const dma_descr_t *descr) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL) {
+        return -EINVAL;
+    }
+    if (state->error) {
+        state->error = 0;
+        return -EIO;
+    }
+    uint32_t flags = state->channel->CSR;
+    if (flags & C5_DMA_ERROR_FLAGS) {
+        LL_DMA_ClearFlag(state->channel, flags & C5_DMA_ERROR_FLAGS);
+        state->running = 0;
+        return -EIO;
+    }
+    if (state->circular) {
+        if (state->completed) {
+            state->completed = 0;
+            return 0;
+        }
+        return -EAGAIN;
+    }
+    if (LL_DMA_IsActiveFlag_IDLE(state->channel)) {
+        state->running = 0;
+        return 0;
+    }
+    return -EAGAIN;
+}
+
+int dma_set_irq(const dma_descr_t *descr, dma_irq_callback_t callback, uint32_t flags) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL || (flags & ~LL_DMA_IT_ALL)) {
+        return -EINVAL;
+    }
+    if (state->running) {
+        return -EBUSY;
+    }
+    c5_dma_irq_enable(descr->channel, 0);
+    LL_DMA_DisableIT(state->channel, LL_DMA_IT_ALL);
+    LL_DMA_ClearFlag(state->channel, LL_DMA_FLAG_ALL);
+    state->callback = callback;
+    state->irq_flags = flags;
+    __DMB();
+    if (callback != NULL) {
+        LL_DMA_EnableIT(state->channel, flags | C5_DMA_ERROR_FLAGS);
+        c5_dma_irq_enable(descr->channel, 1);
+    }
+    return 0;
+}
+
+int dma_abort(const dma_descr_t *descr) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL) {
+        return -EINVAL;
+    }
+    DMA_Channel_TypeDef *channel = state->channel;
+    LL_DMA_DisableIT(channel, LL_DMA_IT_ALL);
+    c5_dma_irq_enable(descr->channel, 0);
+    channel->CCR |= DMA_CCR_SUSP;
+    uint32_t start_tick = HAL_GetTick();
+    for (;;) {
+        if (LL_DMA_IsActiveFlag_SUSP(channel) || LL_DMA_IsActiveFlag_IDLE(channel)) {
+            LL_DMA_ResetChannel(channel);
+            LL_DMA_ClearFlag(channel, LL_DMA_FLAG_ALL);
+            c5_dma_irq_enable(descr->channel, 0);
+            state->running = state->circular = 0;
+            return 0;
+        }
+        if (HAL_GetTick() - start_tick >= C5_DMA_STOP_TIMEOUT_MS) {
+            return -ETIMEDOUT;
+        }
+    }
+}
+
+int dma_deinit(const dma_descr_t *descr) {
+    c5_dma_state_t *state = c5_dma_get(descr);
+    if (state == NULL) {
+        return -EINVAL;
+    }
+    if (dma_abort(descr) != 0) {
+        return -ETIMEDOUT;
+    }
+    __DMB();
+    memset(&c5_nodes[descr->channel], 0, sizeof(c5_nodes[descr->channel]));
+    memset(state, 0, sizeof(*state));
+    return 0;
+}
+
+void dma_irq_handler(uint32_t channel_index) {
+    if (channel_index >= C5_DMA_CHANNELS) {
+        return;
+    }
+    c5_dma_state_t *state = &c5_dma[channel_index];
+    if (!state->claimed) {
+        return;
+    }
+    uint32_t flags = state->channel->CSR & LL_DMA_FLAG_ALL;
+    if (flags == 0) {
+        return;
+    }
+    LL_DMA_ClearFlag(state->channel, flags);
+    if (flags & C5_DMA_ERROR_FLAGS) {
+        state->error = 1;
+        state->running = 0;
+    }
+    if (flags & LL_DMA_FLAG_TC) {
+        state->completed = 1;
+        if (!state->circular) {
+            state->running = 0;
+        }
+    }
+    dma_irq_callback_t callback = state->callback;
+    __DMB();
+    if (callback != NULL && (flags & (state->irq_flags | C5_DMA_ERROR_FLAGS))) {
+        callback(state->descr, flags);
+    }
+}
+
 
 #else // !STM32C5
 

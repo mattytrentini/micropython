@@ -28,7 +28,11 @@
 
 #include "py/mpconfig.h"
 
+#if defined(STM32C5)
+#include "dma_c5.h"
+#else
 typedef struct _dma_descr_t dma_descr_t;
+ 
 
 #if defined(STM32H5) || defined(STM32U5)
 // STM32H5/U5 GPDMA doesn't feature circular mode directly, so define doesn't exist in
@@ -216,5 +220,6 @@ static inline void dma_unprotect_rx_region(void *dest, size_t len) {
 }
 
 #endif // __DCACHE_PRESENT
+#endif // !STM32C5
 
 #endif // MICROPY_INCLUDED_STM32_DMA_H
