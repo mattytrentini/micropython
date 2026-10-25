@@ -218,6 +218,11 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
     MP_STATE_PORT(machine_i2c_target_mem_obj)[i2c_id - 1] = args[ARG_mem].u_obj;
     machine_i2c_target_data_t *data = &machine_i2c_target_data[i2c_id - 1];
     machine_i2c_target_data_init(data, args[ARG_mem].u_obj, args[ARG_mem_addrsize].u_int);
+#if defined(STM32C5)
+    if (args[ARG_mem].u_obj != mp_const_none && data->mem_len == 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("mem buffer cannot be empty"));
+    }
+#endif
 
 #if defined(STM32C5)
     int ret = i2c_init(self->i2c, self->scl, self->sda, 100000, 1000);

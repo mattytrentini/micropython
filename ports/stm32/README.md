@@ -228,6 +228,10 @@ use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.
 addresses, backing memory and IRQ callbacks. Target mode handles repeated STARTs
 as a new transfer without reporting a STOP; connect a separate controller to the
 board-defined target pins for transactions.
+On the XIAO, I2C2 is shared with the onboard IMU at address 0x6A; a target on that
+bus must not claim the IMU's address, and controller scans can still see the IMU.
+The C5 target loopback uses I2C2 as controller and I2C1 as target; it requires
+confirmed PB3/PB4-to-PB6/PB7 wiring before running.
 `machine.mem_backup()` exposes the C5 TAMP backup-register bank as 32
 four-byte words. The register bank is not cleared during MicroPython startup;
 it retains values while the RTC backup domain remains powered.

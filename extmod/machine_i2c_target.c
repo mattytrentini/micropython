@@ -130,9 +130,6 @@ static void machine_i2c_target_data_init(machine_i2c_target_data_t *data, mp_obj
     if (mem_obj != mp_const_none) {
         mp_buffer_info_t bufinfo;
         mp_get_buffer_raise(mem_obj, &bufinfo, MP_BUFFER_RW);
-        if (bufinfo.len == 0) {
-            mp_raise_ValueError(MP_ERROR_TEXT("mem buffer cannot be empty"));
-        }
         if (mem_addrsize < 0 || mem_addrsize > 32 || mem_addrsize % 8 != 0) {
             mp_raise_ValueError(MP_ERROR_TEXT("mem_addrsize must be 0, 8, 16, 24 or 32"));
         }

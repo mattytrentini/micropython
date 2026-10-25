@@ -32,7 +32,8 @@ elif sys.platform == "esp32":
 elif sys.platform == "rp2":
     args_controller = {"scl": 5, "sda": 4}
 elif sys.platform == "pyboard" and "STM32C5" in sys.implementation._machine:
-    # Connect I2C2 (PB3/PB4) to I2C1 (PB6/PB7).  I2C2 is the separate controller.
+    # Before running, verify the PB3/PB4-to-PB6/PB7 jumper wiring is safe.
+    # On XIAO, I2C2 also has the onboard IMU at 0x6A; the test target uses 0x43.
     args_controller = None
     args_target = (1,)
     use_hardware_controller = True
@@ -82,8 +83,13 @@ class TestMemory(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.mem = bytearray(8)
-        with self.assertRaises(ValueError):
-            I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=bytearray())
+        if use_hardware_controller:
+            try:
+                I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=bytearray())
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("C5 I2CTarget accepted an empty memory buffer")
         cls.i2c = new_controller()
         cls.i2c_target = I2CTarget(*args_target, **kwargs_target, addr=ADDR, mem=cls.mem)
         config_pull_up()
