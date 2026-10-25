@@ -115,6 +115,13 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
         remain_len += bufs[i].len;
     }
 
+    #if defined(STM32C5)
+    // A zero-length read has no data phase and must not issue a bus transaction.
+    if (remain_len == 0 && (flags & MP_MACHINE_I2C_FLAG_READ)) {
+        return 0;
+    }
+    #endif
+
     int ret = i2c_start_addr(self->i2c, flags & MP_MACHINE_I2C_FLAG_READ, addr, remain_len, flags & MP_MACHINE_I2C_FLAG_STOP);
     if (ret < 0) {
         return ret;
