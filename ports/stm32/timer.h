@@ -26,24 +26,44 @@
 #ifndef MICROPY_INCLUDED_STM32_TIMER_H
 #define MICROPY_INCLUDED_STM32_TIMER_H
 
+#if defined(STM32C5)
+// Native C5 state, including the configuration exposed through pyb.Timer.
+typedef struct {
+    uint32_t Prescaler;
+    uint32_t CounterMode;
+    uint32_t Period;
+    uint32_t ClockDivision;
+    uint32_t RepetitionCounter;
+} timer_init_t;
+
+typedef struct {
+    TIM_TypeDef *Instance;
+    timer_init_t Init;
+    bool State;
+} timer_handle_t;
+#else
+typedef TIM_Base_InitTypeDef timer_init_t;
+typedef TIM_HandleTypeDef timer_handle_t;
+#endif
+
 // Define this helper macro for MCUs that the HAL misses.
 #if defined(STM32L0)
 #define IS_TIM_32B_COUNTER_INSTANCE(tim) (false)
 #endif
 
-extern TIM_HandleTypeDef servo_tim_handle;
+extern timer_handle_t servo_tim_handle;
 
 extern const mp_obj_type_t pyb_timer_type;
 
 void timer_init0(void);
 void timer_servo_init(void);
-TIM_HandleTypeDef *timer_tim6_init(uint freq);
+timer_handle_t *timer_tim6_init(uint freq);
 void timer_deinit(void);
 TIM_TypeDef *timer_id_to_reg(uint32_t tim_id);
 void timer_clock_enable(size_t tim_id);
 uint32_t timer_get_source_freq(uint32_t tim_id);
 void timer_irq_handler(uint tim_id);
 
-TIM_HandleTypeDef *pyb_timer_get_handle(mp_obj_t timer);
+timer_handle_t *pyb_timer_get_handle(mp_obj_t timer);
 
 #endif // MICROPY_INCLUDED_STM32_TIMER_H

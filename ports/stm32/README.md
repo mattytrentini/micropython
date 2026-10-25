@@ -197,3 +197,9 @@ External GPIO interrupts are available through `machine.Pin.irq()` and
 `pyb.ExtInt`, with rising/falling edges and hard or scheduled callbacks.
 Only one GPIO port can own each numbered EXTI line at a time. Internal
 RTC and other non-GPIO EXTI sources are not enabled on C5.
+
+`pyb.Timer` supports counter/update callbacks, PWM and output compare,
+input capture, encoder modes, and advanced complementary outputs/deadtime.
+Callbacks may be hard or scheduled. TIM2/3/4/5 have 32-bit counters;
+TIM6/7 support basic counter/update operation only. C5 timer source clocks
+use HCLK. This does not enable the separate `machine.PWM` API.

@@ -183,6 +183,7 @@ static inline void HAL_GPIO_DeInit_Compat(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin
 #define GPIO_AF2_TIM3       HAL_GPIO_AF_2
 #define GPIO_AF2_TIM4       HAL_GPIO_AF_2
 #define GPIO_AF2_TIM5       HAL_GPIO_AF_2
+#define GPIO_AF3_TIM8       HAL_GPIO_AF_3
 #define GPIO_AF4_I2C1       HAL_GPIO_AF_4
 #define GPIO_AF4_I2C2       HAL_GPIO_AF_4
 #define GPIO_AF4_USART2     HAL_GPIO_AF_4
@@ -218,7 +219,6 @@ static inline void HAL_GPIO_DeInit_Compat(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin
 
 typedef hal_i2c_handle_t I2C_HandleTypeDef;
 typedef hal_spi_handle_t SPI_HandleTypeDef;
-typedef hal_tim_handle_t TIM_HandleTypeDef;
 typedef hal_uart_handle_t UART_HandleTypeDef;
 
 // RTC handle and types

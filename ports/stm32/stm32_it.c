@@ -650,6 +650,13 @@ void RTC_IRQHandler(void) {
 }
 #endif
 
+#if defined(STM32C5)
+void TIM1_UPD_IRQHandler(void) {
+    IRQ_ENTER(TIM1_UPD_IRQn);
+    timer_irq_handler(1);
+    IRQ_EXIT(TIM1_UPD_IRQn);
+}
+#else
 void TIM1_BRK_TIM9_IRQHandler(void) {
     IRQ_ENTER(TIM1_BRK_TIM9_IRQn);
     timer_irq_handler(9);
@@ -700,6 +707,7 @@ void TIM1_TRG_COM_TIM17_IRQHandler(void) {
     timer_irq_handler(17);
     IRQ_EXIT(TIM1_TRG_COM_TIM17_IRQn);
 }
+#endif
 #endif
 
 void TIM1_CC_IRQHandler(void) {
@@ -755,7 +763,7 @@ void TIM6_DAC_LPTIM1_IRQHandler(void) {
     timer_irq_handler(6);
     IRQ_EXIT(TIM6_DAC_LPTIM1_IRQn);
 }
-#elif defined(STM32L1)
+#elif defined(STM32C5) || defined(STM32L1)
 void TIM6_IRQHandler(void) {
     IRQ_ENTER(TIM6_IRQn);
     timer_irq_handler(6);
@@ -793,6 +801,19 @@ void TIM7_IRQHandler(void) {
 #endif
 
 #if defined(TIM8) // STM32F401 doesn't have TIM8
+#if defined(STM32C5)
+void TIM12_IRQHandler(void) {
+    IRQ_ENTER(TIM12_IRQn);
+    timer_irq_handler(12);
+    IRQ_EXIT(TIM12_IRQn);
+}
+
+void TIM8_UPD_IRQHandler(void) {
+    IRQ_ENTER(TIM8_UPD_IRQn);
+    timer_irq_handler(8);
+    IRQ_EXIT(TIM8_UPD_IRQn);
+}
+#else
 void TIM8_BRK_TIM12_IRQHandler(void) {
     IRQ_ENTER(TIM8_BRK_TIM12_IRQn);
     timer_irq_handler(12);
@@ -813,6 +834,7 @@ void TIM8_UP_IRQHandler(void) {
     IRQ_EXIT(TIM8_UP_IRQn);
 }
 #endif
+#endif
 
 void TIM8_CC_IRQHandler(void) {
     IRQ_ENTER(TIM8_CC_IRQn);
@@ -820,11 +842,13 @@ void TIM8_CC_IRQHandler(void) {
     IRQ_EXIT(TIM8_CC_IRQn);
 }
 
+#if !defined(STM32C5)
 void TIM8_TRG_COM_TIM14_IRQHandler(void) {
     IRQ_ENTER(TIM8_TRG_COM_TIM14_IRQn);
     timer_irq_handler(14);
     IRQ_EXIT(TIM8_TRG_COM_TIM14_IRQn);
 }
+#endif
 #endif
 
 #if defined(STM32L1)
@@ -881,7 +905,7 @@ void TIM20_UP_IRQHandler(void) {
 }
 #endif
 
-#if defined(STM32H7)
+#if defined(STM32C5) || defined(STM32H7)
 void TIM15_IRQHandler(void) {
     IRQ_ENTER(TIM15_IRQn);
     timer_irq_handler(15);
