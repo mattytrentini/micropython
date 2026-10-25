@@ -1,0 +1,4 @@
+C5 SPI physical receive and modes
+C5 SPI word alignment and rejection recovery
+C5 SPI chunking and masked IRQ progress
+C5 SPI validation and deinit recovery

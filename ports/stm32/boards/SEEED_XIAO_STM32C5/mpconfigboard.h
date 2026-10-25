@@ -29,6 +29,10 @@
 #define MICROPY_HW_UART1_RX                 (pin_A10)
 #define MICROPY_HW_UART_REPL                PYB_UART_1
 #define MICROPY_HW_UART_REPL_BAUD           115200
+// SPI3 on the XIAO expansion pins.
+#define MICROPY_HW_SPI3_SCK                 (pin_E2)
+#define MICROPY_HW_SPI3_MISO                (pin_B0)
+#define MICROPY_HW_SPI3_MOSI                (pin_B15)
 
 
 // Green user LED, active low.

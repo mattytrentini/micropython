@@ -253,6 +253,7 @@ SRC_C += \
 	usbd_hid_interface.c \
 	usbd_msc_interface.c \
 	mphalport.c \
+	spi_c5.c \
 	msc_disk.c \
 	mpnetworkport.c \
 	mpthreadport.c \

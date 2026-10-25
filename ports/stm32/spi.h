@@ -27,12 +27,31 @@
 #define MICROPY_INCLUDED_STM32_SPI_H
 
 #include "drivers/bus/spi.h"
+#if defined(STM32C5)
+#include "stm32c5xx_ll_spi.h"
+typedef struct _spi_state_t {
+    SPI_TypeDef *instance;
+    uint32_t baudrate;
+    uint8_t divider;
+    uint8_t bits;
+    bool polarity;
+    bool phase;
+    bool lsb;
+    bool initialized;
+    bool busy;
+} spi_state_t;
+#else
 #include "dma.h"
+#endif
 
 typedef struct _spi_t {
+    #if defined(STM32C5)
+    spi_state_t *spi;
+    #else
     SPI_HandleTypeDef *spi;
     const dma_descr_t *tx_dma_descr;
     const dma_descr_t *rx_dma_descr;
+    #endif
 } spi_t;
 
 typedef struct _spi_proto_cfg_t {

@@ -1,8 +1,4 @@
 
-// Link-time stubs for STM32C5 drivers not yet ported.
-void spi_init0(void) {}
-void spi_deinit_all(void) {}
-
 #include "py/mphal.h"
 
 void board_early_init(void) {

@@ -28,8 +28,6 @@
 #include "extmod/modmachine.h"
 #include "spi.h"
 
-#if !defined(STM32C5)
-
 #if MICROPY_PY_MACHINE_SPI
 
 /******************************************************************************/
@@ -79,6 +77,7 @@ mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
     }
 
     // set the SPI configuration values
+    #if !defined(STM32C5)
     SPI_InitTypeDef *init = &self->spi->spi->Init;
     init->Mode = SPI_MODE_MASTER;
 
@@ -88,6 +87,7 @@ mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
     init->TIMode = SPI_TIMODE_DISABLE;
     init->CRCCalculation = SPI_CRCCALCULATION_DISABLE;
     init->CRCPolynomial = 0;
+    #endif
 
     // set configurable parameters
     spi_set_params(self->spi, 0xffffffff, args[ARG_baudrate].u_int,
@@ -156,5 +156,3 @@ MP_DEFINE_CONST_OBJ_TYPE(
     );
 
 #endif // MICROPY_PY_MACHINE_SPI
-
-#endif // !STM32C5

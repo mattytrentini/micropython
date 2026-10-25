@@ -189,6 +189,7 @@ static inline void HAL_GPIO_DeInit_Compat(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin
 #define GPIO_AF4_USART2     HAL_GPIO_AF_4
 #define GPIO_AF5_SPI1       HAL_GPIO_AF_5
 #define GPIO_AF5_SPI2       HAL_GPIO_AF_5
+#define GPIO_AF5_SPI3       HAL_GPIO_AF_5
 #define GPIO_AF6_SPI3       HAL_GPIO_AF_6
 #define GPIO_AF7_USART1     HAL_GPIO_AF_7
 #define GPIO_AF7_USART2     HAL_GPIO_AF_7

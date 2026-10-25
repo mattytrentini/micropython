@@ -203,3 +203,9 @@ input capture, encoder modes, and advanced complementary outputs/deadtime.
 Callbacks may be hard or scheduled. TIM2/3/4/5 have 32-bit counters;
 TIM6/7 support basic counter/update operation only. C5 timer source clocks
 use HCLK. This does not enable the separate `machine.PWM` API.
+
+`machine.SPI` provides polling master transfers on configured board buses.
+The current backend supports 8- and 16-bit frames, all CPOL/CPHA modes, and
+software-managed transfer lengths beyond the hardware counter limit. SPI3 is
+configured on PB3/PB4/PB5 for the Nucleo. DMA and the legacy `pyb.SPI` API
+remain disabled on C5.

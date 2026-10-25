@@ -35,6 +35,10 @@
 #define MICROPY_HW_UART3_TX                 (pin_D8)
 #define MICROPY_HW_UART3_RX                 (pin_D9)
 
+// SPI3 on PB3/PB4/PB5 (header pins).
+#define MICROPY_HW_SPI3_SCK                 (pin_B3)
+#define MICROPY_HW_SPI3_MISO                (pin_B4)
+#define MICROPY_HW_SPI3_MOSI                (pin_B5)
 // Connect REPL to UART2 which is provided on ST-Link USB interface
 #define MICROPY_HW_UART_REPL                PYB_UART_2
 #define MICROPY_HW_UART_REPL_BAUD           115200
