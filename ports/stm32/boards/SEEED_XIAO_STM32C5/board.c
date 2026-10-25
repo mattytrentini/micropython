@@ -1,18 +1,10 @@
 
 // Link-time stubs for STM32C5 drivers not yet ported.
-void timer_irq_handler(void *handle) {
-    (void)handle;
-}
-void timer_init0(void) {
-}
-void timer_deinit(void) {
-}
-void spi_init0(void) {
-}
-void spi_deinit_all(void) {
-}
-void extint_init0(void) {
-}
+void timer_irq_handler(void *handle) { (void)handle; }
+void timer_init0(void) {}
+void timer_deinit(void) {}
+void spi_init0(void) {}
+void spi_deinit_all(void) {}
 
 #include STM32_HAL_H
 #include "boards/stm32c5xx_hal_compat.h"

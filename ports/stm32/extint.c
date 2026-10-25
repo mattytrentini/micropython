@@ -32,41 +32,6 @@
 #include "extint.h"
 #include "irq.h"
 
-#if defined(STM32C5)
-// STM32C5 EXTI registers use a different layout (IMR1/RTSR1/etc).
-// Stub out extint for now - will need a C5-specific implementation.
-void Handle_EXTI_Irq(uint32_t line) {
-    (void)line;
-}
-uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t callback_obj, bool override_callback_obj) {
-    (void)pin_obj;
-    (void)mode;
-    (void)pull;
-    (void)callback_obj;
-    (void)override_callback_obj;
-    return 0;
-}
-void extint_register_pin(const machine_pin_obj_t *pin, uint32_t mode, bool hard_irq, mp_obj_t callback_obj) {
-    (void)pin;
-    (void)mode;
-    (void)hard_irq;
-    (void)callback_obj;
-}
-void extint_set(const machine_pin_obj_t *pin, uint32_t mode) {
-    (void)pin;
-    (void)mode;
-}
-void extint_enable(uint line) {
-    (void)line;
-}
-void extint_disable(uint line) {
-    (void)line;
-}
-void extint_swint(uint line) {
-    (void)line;
-}
-
-#else // !STM32C5
 
 #if MICROPY_PY_NETWORK_CYW43 && defined(pyb_pin_WL_HOST_WAKE)
 #include "lib/cyw43-driver/src/cyw43.h"
@@ -128,7 +93,7 @@ void extint_swint(uint line) {
 #define EXTI_SWIER_BB(line) (*(__IO uint32_t *)(PERIPH_BB_BASE + ((EXTI_OFFSET + offsetof(EXTI_TypeDef, SWIER)) * 32) + ((line) * 4)))
 #endif
 
-#if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32L4) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+#if defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32L4) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
 // The L4 MCU supports 40 Events/IRQs lines of the type configurable and direct.
 // Here we only support configurable line types.  Details, see page 330 of RM0351, Rev 1.
 // The USB_FS_WAKUP event is a direct type and there is no support for it.
@@ -152,6 +117,20 @@ void extint_swint(uint line) {
 #define EXTI_Trigger_Falling  offsetof(EXTI_TypeDef, FTSR)
 #define EXTI_RTSR EXTI->RTSR
 #define EXTI_FTSR EXTI->FTSR
+#endif
+
+#if defined(STM32C5)
+static void extint_route_c5(const machine_pin_obj_t *pin) {
+    uint32_t line = pin->pin;
+    uint32_t shift = 8 * (line & 3);
+    mp_uint_t irq_state = disable_irq();
+    EXTI->EXTICR[line >> 2] = (EXTI->EXTICR[line >> 2] & ~(0xffu << shift))
+        | ((uint32_t)pin->port << shift);
+    // A new owner must not inherit either edge pending from the old route.
+    EXTI->RPR1 = 1u << line;
+    EXTI->FPR1 = 1u << line;
+    enable_irq(irq_state);
+}
 #endif
 
 typedef struct {
@@ -206,7 +185,7 @@ static const uint8_t nvic_irq_channel[EXTI_NUM_VECTORS] = {
     ADC1_COMP_IRQn,
     #endif
 
-    #elif defined(STM32N6) || defined(STM32H5) || defined(STM32U5)
+    #elif defined(STM32C5) || defined(STM32N6) || defined(STM32H5) || defined(STM32U5)
 
     EXTI0_IRQn,
     EXTI1_IRQn,
@@ -433,6 +412,12 @@ uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t ca
             extint_trigger_mode(v_line, mode);
             extint_enable(v_line);
         } else {
+            #if defined(STM32C5)
+            mp_hal_pin_config(pin, MP_HAL_PIN_MODE_INPUT, pull, 0);
+            extint_route_c5(pin);
+            extint_trigger_mode(v_line, mode);
+            extint_enable(v_line);
+            #else
             mp_hal_gpio_clock_enable(pin->gpio);
             GPIO_InitTypeDef exti;
             exti.Pin = pin->pin_mask;
@@ -442,6 +427,7 @@ uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t ca
             HAL_GPIO_Init(pin->gpio, &exti);
 
             // Calling HAL_GPIO_Init does an implicit extint_enable
+            #endif
         }
 
         /* Enable and set NVIC Interrupt to the lowest priority */
@@ -480,6 +466,9 @@ void extint_register_pin(const machine_pin_obj_t *pin, uint32_t mode, bool hard_
         pyb_extint_callback_arg[line] = MP_OBJ_FROM_PTR(pin);
 
         // Route the GPIO to EXTI
+        #if defined(STM32C5)
+        extint_route_c5(pin);
+        #else
         #if !defined(STM32H5) && !defined(STM32WB) && !defined(STM32WL)
         __HAL_RCC_SYSCFG_CLK_ENABLE();
         #endif
@@ -491,6 +480,7 @@ void extint_register_pin(const machine_pin_obj_t *pin, uint32_t mode, bool hard_
         SYSCFG->EXTICR[line >> 2] =
             (SYSCFG->EXTICR[line >> 2] & ~(0x0f << (4 * (line & 0x03))))
             | ((uint32_t)(GPIO_GET_INDEX(pin->gpio)) << (4 * (line & 0x03)));
+        #endif
         #endif
 
         extint_trigger_mode(line, mode);
@@ -523,6 +513,9 @@ void extint_set(const machine_pin_obj_t *pin, uint32_t mode) {
         pyb_extint_callback_arg[line] = MP_OBJ_FROM_PTR(pin);
 
         // Route the GPIO to EXTI
+        #if defined(STM32C5)
+        extint_route_c5(pin);
+        #else
         #if !defined(STM32H5) && !defined(STM32N6) && !defined(STM32WB) && !defined(STM32WL)
         __HAL_RCC_SYSCFG_CLK_ENABLE();
         #endif
@@ -535,20 +528,9 @@ void extint_set(const machine_pin_obj_t *pin, uint32_t mode) {
             (SYSCFG->EXTICR[line >> 2] & ~(0x0f << (4 * (line & 0x03))))
             | ((uint32_t)(GPIO_GET_INDEX(pin->gpio)) << (4 * (line & 0x03)));
         #endif
+        #endif
 
-        // Enable or disable the rising detector
-        if ((mode & GPIO_MODE_IT_RISING) == GPIO_MODE_IT_RISING) {
-            EXTI_RTSR |= 1 << line;
-        } else {
-            EXTI_RTSR &= ~(1 << line);
-        }
-
-        // Enable or disable the falling detector
-        if ((mode & GPIO_MODE_IT_FALLING) == GPIO_MODE_IT_FALLING) {
-            EXTI_FTSR |= 1 << line;
-        } else {
-            EXTI_FTSR &= ~(1 << line);
-        }
+        extint_trigger_mode(line, mode);
 
         // Configure the NVIC
         NVIC_SetPriority(IRQn_NONNEG(nvic_irq_channel[line]), IRQ_PRI_EXTINT);
@@ -569,7 +551,7 @@ void extint_enable(uint line) {
     if (pyb_extint_mode[line] == EXTI_Mode_Interrupt) {
         #if defined(STM32H7)
         EXTI_D1->IMR1 |= (1 << line);
-        #elif defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+        #elif defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
         EXTI->IMR1 |= (1 << line);
         #else
         EXTI->IMR |= (1 << line);
@@ -577,7 +559,7 @@ void extint_enable(uint line) {
     } else {
         #if defined(STM32H7)
         EXTI_D1->EMR1 |= (1 << line);
-        #elif defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+        #elif defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
         EXTI->EMR1 |= (1 << line);
         #else
         EXTI->EMR |= (1 << line);
@@ -603,7 +585,7 @@ void extint_disable(uint line) {
     #if defined(STM32H7)
     EXTI_D1->IMR1 &= ~(1 << line);
     EXTI_D1->EMR1 &= ~(1 << line);
-    #elif defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+    #elif defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
     EXTI->IMR1 &= ~(1 << line);
     EXTI->EMR1 &= ~(1 << line);
     #else
@@ -625,7 +607,7 @@ void extint_swint(uint line) {
         return;
     }
     // we need 0 to 1 transition to trigger the interrupt
-    #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32L4) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
+    #if defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32H7) || defined(STM32L4) || defined(STM32N6) || defined(STM32U5) || defined(STM32WB) || defined(STM32WL)
     EXTI->SWIER1 &= ~(1 << line);
     EXTI->SWIER1 |= (1 << line);
     #else
@@ -638,6 +620,10 @@ void extint_trigger_mode(uint line, uint32_t mode) {
     if (line >= EXTI_NUM_VECTORS) {
         return;
     }
+    #if defined(STM32C5)
+    // Event modes share the interrupt modes' rising/falling edge detectors.
+    mode |= GPIO_MODE_IT_RISING & GPIO_MODE_IT_FALLING;
+    #endif
     #if !defined(EXTI_MODE_BB)
     // This MCU doesn't have bitband support.
     mp_uint_t irq_state = disable_irq();
@@ -705,7 +691,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(extint_obj_swint_obj,  extint_obj_swint);
 static mp_obj_t extint_regs(void) {
     const mp_print_t *print = &mp_plat_print;
 
-    #if defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32L4) || defined(STM32N6) || defined(STM32WB) || defined(STM32WL)
+    #if defined(STM32C5) || defined(STM32G0) || defined(STM32G4) || defined(STM32H5) || defined(STM32L4) || defined(STM32N6) || defined(STM32WB) || defined(STM32WL)
     mp_printf(print, "EXTI_IMR1   %08x\n", (unsigned int)EXTI->IMR1);
     mp_printf(print, "EXTI_IMR2   %08x\n", (unsigned int)EXTI->IMR2);
     mp_printf(print, "EXTI_EMR1   %08x\n", (unsigned int)EXTI->EMR1);
@@ -716,7 +702,7 @@ static mp_obj_t extint_regs(void) {
     mp_printf(print, "EXTI_FTSR2  %08x\n", (unsigned int)EXTI->FTSR2);
     mp_printf(print, "EXTI_SWIER1 %08x\n", (unsigned int)EXTI->SWIER1);
     mp_printf(print, "EXTI_SWIER2 %08x\n", (unsigned int)EXTI->SWIER2);
-    #if defined(STM32G0) || defined(STM32N6) || defined(STM32H5)
+    #if defined(STM32C5) || defined(STM32G0) || defined(STM32N6) || defined(STM32H5)
     mp_printf(print, "EXTI_RPR1    %08x\n", (unsigned int)EXTI->RPR1);
     mp_printf(print, "EXTI_FPR1    %08x\n", (unsigned int)EXTI->FPR1);
     mp_printf(print, "EXTI_RPR2    %08x\n", (unsigned int)EXTI->RPR2);
@@ -858,6 +844,17 @@ static inline bool is_rtc_interrupt(uint32_t line) {
 // Interrupt handler
 void Handle_EXTI_Irq(uint32_t line) {
     bool is_exti_irq;
+    #if defined(STM32C5)
+    if (line >= EXTI_NUM_VECTORS) {
+        return;
+    }
+    uint32_t bit = 1u << line;
+    is_exti_irq = ((EXTI->RPR1 | EXTI->FPR1) & bit) != 0;
+    if (is_exti_irq) {
+        EXTI->RPR1 = bit;
+        EXTI->FPR1 = bit;
+    }
+    #else
 
     if (__HAL_GPIO_EXTI_GET_FLAG(1 << line)) {
         __HAL_GPIO_EXTI_CLEAR_FLAG(1 << line);
@@ -869,6 +866,7 @@ void Handle_EXTI_Irq(uint32_t line) {
     } else {
         is_exti_irq = false;
     }
+    #endif
 
     if (is_exti_irq) {
         if (line < EXTI_NUM_VECTORS) {
@@ -913,4 +911,3 @@ void Handle_EXTI_Irq(uint32_t line) {
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t pyb_extint_callback[PYB_EXTI_NUM_VECTORS]);
 
-#endif // !STM32C5

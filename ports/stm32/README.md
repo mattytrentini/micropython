@@ -189,3 +189,11 @@ On `NUCLEO_C5A3ZG`, the ST-LINK virtual COM port provides the UART REPL
 (USART2 on PA2/PA3, 115200 baud). The User USB connector provides a separate
 USB CDC REPL. On `SEEED_XIAO_STM32C5`, use the USB CDC port after flashing;
 `XIAOC5BOOT` is the bootloader drive, not the running MicroPython console.
+
+STM32C5 peripherals
+-------------------
+
+External GPIO interrupts are available through `machine.Pin.irq()` and
+`pyb.ExtInt`, with rising/falling edges and hard or scheduled callbacks.
+Only one GPIO port can own each numbered EXTI line at a time. Internal
+RTC and other non-GPIO EXTI sources are not enabled on C5.

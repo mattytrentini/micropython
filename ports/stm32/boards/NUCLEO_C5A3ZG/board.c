@@ -18,9 +18,7 @@ void spi_init0(void) {
 void spi_deinit_all(void) {
 }
 
-// EXTINT stubs
-void extint_init0(void) {
-}
+
 
 
 // Timer handle stub (referenced by stm32_it.c IRQ handlers)

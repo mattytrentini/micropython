@@ -307,21 +307,7 @@ static inline hal_status_t HAL_RTC_GetDate(RTC_HandleTypeDef *hrtc, RTC_DateType
 #define RCC_CSR_IWDGRSTF    RCC_RSR_IWDGRSTF
 #define RCC_CSR_WWDGRSTF    RCC_RSR_WWDGRSTF
 
-// EXTI register name compatibility (C5 uses numbered registers)
-#define EXTI_IMR    IMR1
-#define EXTI_EMR    EMR1
-#define EXTI_RTSR   RTSR1
-#define EXTI_FTSR   FTSR1
-#define EXTI_SWIER  SWIER1
-#define EXTI_PR     RPR1
-
 // IRQ name compatibility
-#ifndef EXTI9_5_IRQn
-#define EXTI9_5_IRQn        EXTI5_IRQn
-#endif
-#ifndef EXTI15_10_IRQn
-#define EXTI15_10_IRQn      EXTI10_IRQn
-#endif
 #ifndef PVD_IRQn
 #define PVD_IRQn            PVD_AVD_IRQn
 #endif
