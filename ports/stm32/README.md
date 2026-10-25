@@ -219,5 +219,5 @@ writes still address the target.
 `machine.time_pulse_us()` uses the Cortex-M cycle counter for pulse timing;
 timeouts are returned as negative values as in the common machine API.
 `machine.bitstream()` and the frozen `neopixel.NeoPixel` driver use the same
-cycle counter for cycle-accurate output. The feature tests use a timer-driven
-input pulse and verify the NeoPixel buffer and idle pin state.
+cycle counter for timing. Automated tests measure `time_pulse_us()` using a
+timer-generated input pulse; they do not validate NeoPixel waveform accuracy.

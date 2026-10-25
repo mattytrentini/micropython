@@ -8,7 +8,7 @@ if "STM32C5" not in sys.implementation._machine:
     print("SKIP")
     raise SystemExit
 
-pin = Pin.cpu.A5
+pin = Pin.cpu.A0
 timer = Timer(2, freq=1000)
 try:
     timer.channel(1, Timer.PWM, pin=pin, pulse_width_percent=30)
