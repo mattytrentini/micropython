@@ -256,8 +256,6 @@ SRC_C += \
 	usbd_hid_interface.c \
 	usbd_msc_interface.c \
 	mphalport.c \
-	spi_c5.c \
-	stm32c5.c \
 	msc_disk.c \
 	mpnetworkport.c \
 	mpthreadport.c \
@@ -349,6 +347,7 @@ SRC_O += \
 endif
 
 ifeq ($(MCU_SERIES),c5)
+SRC_C += spi_c5.c stm32c5.c
 # STM32C5 uses CubeMX2-era HAL: no _ex variants, LL is header-only.
 HAL_SRC_C += $(addprefix $(STM32LIB_HAL_BASE)/Src/stm32$(MCU_SERIES)xx_,\
 	hal.c \

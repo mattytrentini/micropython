@@ -198,7 +198,7 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-#if defined(STM32C5)
+    #if defined(STM32C5)
     mp_int_t addr_size_val = args[ARG_addrsize].u_int;
     mp_int_t addr_val = args[ARG_addr].u_int;
     if (addr_size_val != 7 && addr_size_val != 10) {
@@ -207,7 +207,7 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
     if (addr_val < 0 || addr_val >= (1 << addr_size_val)) {
         mp_raise_ValueError(MP_ERROR_TEXT("invalid address"));
     }
-#endif
+    #endif
     // Work out I2C bus.
     int i2c_id = i2c_find_peripheral(args[ARG_id].u_obj);
 
@@ -218,13 +218,13 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
     MP_STATE_PORT(machine_i2c_target_mem_obj)[i2c_id - 1] = args[ARG_mem].u_obj;
     machine_i2c_target_data_t *data = &machine_i2c_target_data[i2c_id - 1];
     machine_i2c_target_data_init(data, args[ARG_mem].u_obj, args[ARG_mem_addrsize].u_int);
-#if defined(STM32C5)
+    #if defined(STM32C5)
     if (args[ARG_mem].u_obj != mp_const_none && data->mem_len == 0) {
         mp_raise_ValueError(MP_ERROR_TEXT("mem buffer cannot be empty"));
     }
-#endif
+    #endif
 
-#if defined(STM32C5)
+    #if defined(STM32C5)
     int ret = i2c_init(self->i2c, self->scl, self->sda, 100000, 1000);
     if (ret < 0) {
         mp_raise_OSError(-ret);
@@ -243,13 +243,13 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
     NVIC_SetPriority(self->irqn_er, IRQ_PRI_I2C);
     NVIC_EnableIRQ(self->irqn_ev);
     NVIC_EnableIRQ(self->irqn_er);
-#else
+    #else
     mp_hal_pin_config_alt(self->scl, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_NONE, AF_FN_I2C, i2c_id);
     mp_hal_pin_config_alt(self->sda, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_NONE, AF_FN_I2C, i2c_id);
     i2c_slave_init(self->i2c, self->irqn_ev, IRQ_PRI_I2C, args[ARG_addr].u_int);
     NVIC_SetPriority(self->irqn_er, IRQ_PRI_I2C);
     NVIC_EnableIRQ(self->irqn_er);
-#endif
+    #endif
 
     i2c_target_enabled |= 1 << (i2c_id - 1);
 
@@ -259,10 +259,14 @@ static mp_obj_t mp_machine_i2c_target_make_new(const mp_obj_type_t *type, size_t
 static void mp_machine_i2c_target_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_i2c_target_obj_t *self = MP_OBJ_TO_PTR(self_in);
     uint32_t oar1 = self->i2c->OAR1;
+    #if defined(STM32C5)
     uint32_t addr = oar1 & I2C_OAR1_OA1;
     if (!(oar1 & I2C_OAR1_OA1MODE)) {
         addr >>= 1;
     }
+    #else
+    uint32_t addr = (oar1 >> 1) & 0x7f;
+    #endif
     mp_printf(print, "I2CTarget(%u, addr=%u)", self - &machine_i2c_target_obj[0] + 1, addr);
 }
 

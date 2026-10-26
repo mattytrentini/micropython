@@ -212,6 +212,12 @@ USB CDC REPL. On `SEEED_XIAO_STM32C5`, use the USB CDC port after flashing;
 STM32C5 peripherals
 -------------------
 
+The C5 `stm32lib` dependency must integrate the new vendor import with the
+existing MicroPython HAL and CMSIS fixes. Using the raw vendor-import branch
+alone drops fixes required by other STM32 boards. C5-specific backends are
+selected only for C5 builds; other families retain their existing drivers and
+register layouts.
+
 External GPIO interrupts are available through `machine.Pin.irq()` and
 `pyb.ExtInt`, with rising/falling edges and hard or scheduled callbacks.
 Only one GPIO port can own each numbered EXTI line at a time. Other non-GPIO
