@@ -239,6 +239,15 @@ static bool i2s_init(machine_i2s_obj_t *self) {
         .bit_order = HAL_I2S_MSB_FIRST,
         .audio_frequency = i2s_frequency(self->rate),
     };
+    // Use the MCLK divider path when the ordinary 9-bit divider cannot
+    // represent the rate. MCK is not routed to a pin; wire slots stay unchanged.
+    uint32_t frame_bits = slots_32_bit ? 64 : 32;
+    uint32_t divider = (HAL_RCC_SPI_GetKernelClkFreq(SPI1) / frame_bits + self->rate / 2) / self->rate;
+    if (divider > 511) {
+        LL_I2S_EnableMasterClock(SPI1);
+    } else {
+        LL_I2S_DisableMasterClock(SPI1);
+    }
     if (HAL_I2S_MASTER_SetConfig(&self->hi2s, &config) != HAL_OK) {
         HAL_I2S_DeInit(&self->hi2s);
         return false;

@@ -264,6 +264,9 @@ on-board LED, and PB3/PB4/PB5 are used by the board's SPI3 configuration.
 Transfer-rate tests cover 16-/32-bit mono and stereo transmit and receive on
 the Nucleo. External hardware is still required to validate audio sample
 contents; no audio loopback is wired on the board.
+Low-rate transmit configurations use the internal master-clock divider path
+when PCLK2 exceeds the ordinary divider range. This supports 8 kHz at 144 MHz
+without changing the wire-slot width or configuring an MCK output pin.
 
 On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
 clocks. It supports 48 MHz HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers;

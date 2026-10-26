@@ -38,7 +38,8 @@ elif "esp32" in sys.platform:
     MAX_DELTA_MS = 8
 
 TEST_BYTES = b"01234567"
-RATE = 11025  # frames/sec
+# Exercise the low-rate divider boundary at the C5's 144 MHz peripheral clock.
+RATE = 8000 if "STM32C5" in sys.implementation._machine else 11025  # frames/sec
 
 
 def test(i2s_id, sck_pin, ws_pin, sd_pin, mode, bits_per_sample, frame_format):
