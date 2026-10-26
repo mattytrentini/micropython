@@ -128,8 +128,11 @@ MP_WEAK mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
 
 #if __CORTEX_M >= 0x03
 void mp_hal_ticks_cpu_enable(void) {
-    if (!(DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk)) {
+    // A debugger can leave CYCCNTENA set while disabling its trace clock.
+    if (!(CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk)) {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    }
+    if (!(DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk)) {
         #if defined(__CORTEX_M) && __CORTEX_M == 7
         // on Cortex-M7 we must unlock the DWT before writing to its registers
         DWT->LAR = 0xc5acce55;

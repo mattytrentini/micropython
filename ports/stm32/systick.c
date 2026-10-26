@@ -121,11 +121,26 @@ void mp_hal_delay_us(mp_uint_t usec) {
         while (mp_hal_ticks_us() - start < usec) {
         }
     } else {
+        #if defined(STM32C5)
+        // Use a running hardware counter: an empty C loop can be optimized
+        // away. Bound each interval so its cycle count fits in 32 bits.
+        mp_hal_ticks_cpu_enable();
+        uint32_t cycles_per_us = SystemCoreClock / 1000000U;
+        while (usec) {
+            uint32_t step = MIN(usec, 1000000U);
+            uint32_t cycles = step * cycles_per_us;
+            uint32_t start = DWT->CYCCNT;
+            while ((uint32_t)(DWT->CYCCNT - start) < cycles) {
+            }
+            usec -= step;
+        }
+        #else
         // IRQs disabled, so need to use a busy loop for the delay
         // sys freq is always a multiple of 2MHz, so division here won't lose precision
         const uint32_t ucount = HAL_RCC_GetSysClockFreq() / 2000000 * usec / 2;
         for (uint32_t count = 0; ++count <= ucount;) {
         }
+        #endif
     }
 }
 

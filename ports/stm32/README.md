@@ -300,8 +300,9 @@ code, but internal flash filesystem storage remains disabled on both C5 boards;
 enabling it requires a separate storage-layout decision.
 
 
-`machine.time_pulse_us()` uses the Cortex-M cycle counter for pulse timing;
-timeouts are returned as negative values as in the common machine API.
-`machine.bitstream()` and the frozen `neopixel.NeoPixel` driver use the same
-cycle counter for timing. Automated tests measure `time_pulse_us()` using a
-timer-generated input pulse; they do not validate NeoPixel waveform accuracy.
+`machine.time_pulse_us()` uses the microsecond tick clock; timeouts are returned
+as negative values as in the common machine API. `machine.bitstream()` uses the
+Cortex-M cycle counter. CPU timing enables the trace clock independently of
+the counter enable, recovering bootloader/debugger states that otherwise leave
+the counter stopped. C5 microsecond delays also use this counter while IRQs
+are disabled, rather than relying on an empty C delay loop.
