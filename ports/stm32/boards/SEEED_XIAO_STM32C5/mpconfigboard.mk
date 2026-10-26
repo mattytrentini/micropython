@@ -8,3 +8,5 @@ STARTUP_FILE = $(STM32LIB_CMSIS_BASE)/Source/startup_$(CMSIS_MCU_LOWER).o
 LD_FILES = boards/SEEED_XIAO_STM32C5/stm32c5a3cg.ld boards/common_basic.ld
 TEXT0_ADDR = 0x08008000
 UF2_FAMILY_ID = 0x00c5c5c5
+
+FROZEN_MANIFEST ?= $(BOARD_DIR)/manifest.py

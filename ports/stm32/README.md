@@ -308,6 +308,10 @@ the counter enable, recovering bootloader/debugger states that otherwise leave
 the counter stopped. C5 microsecond delays also use this counter while IRQs
 are disabled, rather than relying on an empty C delay loop.
 
+Both C5 board definitions freeze `neopixel.NeoPixel`. Automated pulse tests use
+a timer-generated input signal; actual NeoPixel waveform and LED behaviour
+still require external measurement/hardware.
+
 `machine.CAN` exposes one configured Classical CAN bus on each board. The
 backend uses the C5 FDCAN peripheral in Classical CAN mode, with a maximum
 payload of eight bytes; CAN-FD and bit-rate switching are not enabled.
