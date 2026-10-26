@@ -28,6 +28,12 @@ try:
     # Reinitializing the Python object must not reset an initialized calendar.
     rtc.init()
     print(datetime_matches())
+    # INITS is clear when the year field is 00, even for a running calendar.
+    # Adopting the RTC must preserve a date in the year 2000.
+    set_datetime = (2000, 2, 29, 2, 12, 34, 30, 0)
+    rtc.datetime(set_datetime)
+    rtc.init()
+    print(datetime_matches())
 finally:
     rtc.datetime(old_datetime)
 

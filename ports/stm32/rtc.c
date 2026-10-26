@@ -979,6 +979,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
 RTC_HandleTypeDef RTCHandle;
 static bool rtc_init_ok;
 static bool rtc_calendar_ready;
+static bool rtc_calendar_was_running;
 static bool rtc_lse_drive_unavailable;
 static uint32_t rtc_clock_source;
 static bool rtc_domain_write_access_begin(void) {
@@ -1010,6 +1011,7 @@ static bool rtc_wait_clock_ready(uint32_t source) {
 void rtc_init_start(bool force_init) {
     rtc_init_ok = false;
     rtc_calendar_ready = false;
+    rtc_calendar_was_running = LL_RCC_IsEnabledRTC() != 0;
     rtc_lse_drive_unavailable = false;
     (void)force_init;
     RTCHandle.Instance = RTC;
@@ -1105,7 +1107,9 @@ void rtc_init_finalise(void) {
     if (rtc_calendar_ready) {
         return;
     }
-    if (HAL_RTC_CALENDAR_IsInitialized() == HAL_RTC_CALENDAR_NOT_INITIALIZED) {
+    // INITS only indicates a nonzero year. A running year-2000 calendar
+    // has INITS clear and must not be reset when adopting the RTC.
+    if (!rtc_calendar_was_running && HAL_RTC_CALENDAR_IsInitialized() == HAL_RTC_CALENDAR_NOT_INITIALIZED) {
         bool restore_write_protection = rtc_domain_write_access_begin();
         HAL_RTC_DisableWriteProtection();
         if (HAL_RTC_EnterInitMode() != HAL_OK) {

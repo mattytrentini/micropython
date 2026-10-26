@@ -244,6 +244,9 @@ unavailable.
 RTC operations and wakeup interrupt acknowledgement preserve the previous
 RTC-domain write protection state, so backup-memory views remain writable.
 Disabling wakeup uses `rtc.wakeup(None)`.
+A running calendar is preserved when its year is 2000, despite the hardware
+INITS flag being clear for a zero year field. RTC reinitialization and Standby
+wake must not replace that calendar with the startup default.
 
 `pyb.Timer` supports counter/update callbacks, PWM and output compare,
 input capture, encoder modes, and advanced complementary outputs/deadtime.
