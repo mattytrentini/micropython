@@ -371,9 +371,9 @@ uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t ca
         if (v_line >= EXTI_NUM_VECTORS) {
             mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("ExtInt vector %d >= max of %d"), v_line, EXTI_NUM_VECTORS);
         }
-#if defined(STM32C5)
+        #if defined(STM32C5)
         mp_raise_NotImplementedError(MP_ERROR_TEXT("internal ExtInt lines unavailable"));
-#endif
+        #endif
     } else {
         pin = pin_find(pin_obj);
         v_line = pin->pin;
@@ -852,8 +852,11 @@ void Handle_EXTI_Irq(uint32_t line) {
         return;
     }
     uint32_t bit = 1u << line;
-    is_exti_irq = ((EXTI->RPR1 | EXTI->FPR1) & bit) != 0;
-    if (is_exti_irq) {
+    bool pending = ((EXTI->RPR1 | EXTI->FPR1) & bit) != 0;
+    // RTC line 17 is direct: its handler acknowledges RTC_SCR before calling
+    // here, and GPIO rising/falling pending registers do not record it.
+    is_exti_irq = line == 17 || pending;
+    if (pending) {
         EXTI->RPR1 = bit;
         EXTI->FPR1 = bit;
     }
@@ -913,4 +916,3 @@ void Handle_EXTI_Irq(uint32_t line) {
 }
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t pyb_extint_callback[PYB_EXTI_NUM_VECTORS]);
-

@@ -72,6 +72,21 @@ Double-press Reset to mount `XIAOC5BOOT`, then copy `firmware.uf2` to that
 drive. Do not flash this board's application at `0x08000000`.
 
 
+The STM32C5A3xG silicon revision Z (DBGMCU_IDCODE revision ID `0x1001`) has
+an LSE low-drive limitation (ST errata ES0677, section 2.2.3): `LSEDRV=00`
+may prevent the LSE crystal from starting or cause it to stop. These boards
+select medium-high drive as specified by their board configuration. RM0522
+revision 1, page 319, permits changing `LSEDRV` only while both `LSEON` and
+`LSERDY` are clear. Firmware configures the drive before enabling an
+unconfigured LSE and never changes an established RTC source. If an earlier
+firmware leaves low drive selected while `LSERDY` remains set, a CPU reset or
+firmware update cannot repair the retained RTC-domain state. Recovery requires
+an RTC-domain power reset or `RTCDRST`; either resets RTC/TAMP/backup data and
+must be explicitly authorized before use.
+
+See [ES0677](https://www.st.com/resource/en/errata_sheet/es0677-stm32c5a3xg-stm32c593xx-and-stm32c591xx-device-errata-stmicroelectronics.pdf)
+and [RM0522](https://www.st.com/resource/en/reference_manual/rm0522-stm32c5-series-armbased-32bit-mcus-stmicroelectronics.pdf).
+
 ### Link Time Optimization
 
 Link Time Optimization (LTO) reduces the firmware binary size when enabled
@@ -200,16 +215,25 @@ sources are not exposed through `pyb.ExtInt`.
 
 `pyb.RTC` exposes calendar initialization and `datetime()` read/write on both
 C5 boards. The XIAO and Nucleo board hardware provide a 32.768 kHz LSE crystal.
-Startup adopts an existing RTC clock source; if RTCSEL is still unset it selects
-the board-configured source with the one-time initial selector write. It never
-resets the RTC backup domain or changes an already-selected source. The calendar
-is initialized to 2000-01-01 only when the RTC reports that its calendar has
-never been initialized. Existing calendar contents and TAMP backup registers
-are preserved. The Python `time` module's calendar and wall-clock functions use
-this RTC; `time.time()` and `time.time_ns()` use the MicroPython epoch of 2000.
-`pyb.RTC.wakeup()` uses the RTC wakeup timer and schedules callbacks through the
-normal deferred callback path. It requires a supported LSE/LSI clock and its
-standard prescalers; calibration remains unavailable.
+When RTCSEL is unset, startup uses the board-configured oscillator drive and
+selects the board-configured source with the one-time initial selector write.
+The C5 LSE drive matches Zephyr's `clk_lse` default (`driving-capability = <2>`)
+in `dts/arm/st/c5/stm32c5.dtsi`; `dts/bindings/clock/st,stm32-lse-clock.yaml`
+defines the range and value, and the XIAO board enables `clk_lse` in
+`boards/seeed/xiao_stm32c5/xiao_stm32c5.dts`.
+Startup adopts an existing RTC clock source; it never resets the RTC backup
+domain or changes an already-selected source. A running LSE oscillator is also
+preserved. The calendar is initialized to 2000-01-01 only when the RTC reports
+that its calendar has never been initialized. Existing calendar contents and
+TAMP backup registers are preserved. The Python `time` module's calendar and
+wall-clock functions use this RTC; `time.time()` and `time.time_ns()` use the
+MicroPython epoch of 2000. `pyb.RTC.wakeup()` uses the RTC wakeup timer and
+schedules callbacks through the normal deferred callback path. It requires a
+supported LSE/LSI clock and its standard prescalers; calibration remains
+unavailable.
+RTC operations and wakeup interrupt acknowledgement preserve the previous
+RTC-domain write protection state, so backup-memory views remain writable.
+Disabling wakeup uses `rtc.wakeup(None)`.
 
 `pyb.Timer` supports counter/update callbacks, PWM and output compare,
 input capture, encoder modes, and advanced complementary outputs/deadtime.

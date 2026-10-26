@@ -979,7 +979,21 @@ MP_DEFINE_CONST_OBJ_TYPE(
 RTC_HandleTypeDef RTCHandle;
 static bool rtc_init_ok;
 static bool rtc_calendar_ready;
+static bool rtc_lse_drive_unavailable;
 static uint32_t rtc_clock_source;
+static bool rtc_domain_write_access_begin(void) {
+    bool restore_write_protection = LL_PWR_IsEnabledRTCDomainWriteProtection() != 0U;
+    if (restore_write_protection) {
+        HAL_PWR_DisableRTCDomainWriteProtection();
+    }
+    return restore_write_protection;
+}
+
+static void rtc_domain_write_access_end(bool restore_write_protection) {
+    if (restore_write_protection) {
+        HAL_PWR_EnableRTCDomainWriteProtection();
+    }
+}
 
 static bool rtc_wait_clock_ready(uint32_t source) {
     uint32_t start = HAL_GetTick();
@@ -996,30 +1010,66 @@ static bool rtc_wait_clock_ready(uint32_t source) {
 void rtc_init_start(bool force_init) {
     rtc_init_ok = false;
     rtc_calendar_ready = false;
+    rtc_lse_drive_unavailable = false;
     (void)force_init;
     RTCHandle.Instance = RTC;
-    HAL_PWR_DisableRTCDomainWriteProtection();
+    bool restore_write_protection = rtc_domain_write_access_begin();
 
     // Read and preserve the source selected by boot firmware or an earlier run.
     uint32_t source = HAL_RCC_RTC_GetKernelClkSource();
+    #if MICROPY_HW_RTC_USE_LSE
+    // Rev Z ES0677 forbids low-drive operation. Preserve an established LSE
+    // source; RM0522 also forbids changing LSEDRV while LSERDY remains set.
+    if (!LL_RCC_LSE_IsBypassed()
+        && LL_RCC_LSE_GetDriveCapability() == LL_RCC_LSEDRIVE_LOW
+        && (source == LL_RCC_RTC_CLKSOURCE_LSE
+            || (source == LL_RCC_RTC_CLKSOURCE_NONE && LL_RCC_LSE_IsReady()))) {
+        rtc_lse_drive_unavailable = true;
+        rtc_domain_write_access_end(restore_write_protection);
+        return;
+    }
+    #endif
     if (source == LL_RCC_RTC_CLKSOURCE_NONE) {
-        // The RTCSEL reset value can be written once without resetting the
-        // backup domain; subsequent source changes require a domain reset.
         #if MICROPY_HW_RTC_USE_LSE
         uint32_t initial_source = LL_RCC_RTC_CLKSOURCE_LSE;
-        LL_RCC_LSE_Enable();
+        uint32_t drive = MICROPY_HW_RTC_LSE_DRIVE;
+        if (LL_RCC_LSE_IsEnabled()) {
+            // An unselected LSE that never became ready can be safely
+            // reconfigured; don't disturb a running oscillator.
+            if (!LL_RCC_LSE_IsReady() && !LL_RCC_LSE_IsBypassed()
+                && LL_RCC_LSE_GetDriveCapability() != drive) {
+                if (HAL_RCC_LSE_Disable() != HAL_OK) {
+                    rtc_domain_write_access_end(restore_write_protection);
+                    return;
+                }
+                LL_RCC_LSE_SetDriveCapability(drive);
+                LL_RCC_LSE_Enable();
+            }
+        } else {
+            if (!LL_RCC_LSE_IsBypassed()) {
+                // RM0522 requires both LSEON and LSERDY clear before
+                // changing LSEDRV. A stale ready flag cannot be repaired
+                // without resetting the RTC domain.
+                if (LL_RCC_LSE_IsReady()) {
+                    rtc_domain_write_access_end(restore_write_protection);
+                    return;
+                }
+                LL_RCC_LSE_SetDriveCapability(drive);
+            }
+            LL_RCC_LSE_Enable();
+        }
         #else
         uint32_t initial_source = LL_RCC_RTC_CLKSOURCE_LSI;
         LL_RCC_LSI_Enable();
         #endif
         uint32_t start = HAL_GetTick();
         while (!((initial_source == LL_RCC_RTC_CLKSOURCE_LSE && LL_RCC_LSE_IsReady())
-            || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))
-            && HAL_GetTick() - start < LSE_STARTUP_TIMEOUT) {
+                 || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))
+               && HAL_GetTick() - start < LSE_STARTUP_TIMEOUT) {
         }
         if (!((initial_source == LL_RCC_RTC_CLKSOURCE_LSE && LL_RCC_LSE_IsReady())
-            || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))) {
-            HAL_PWR_EnableRTCDomainWriteProtection();
+              || (initial_source == LL_RCC_RTC_CLKSOURCE_LSI && LL_RCC_LSI_IsReady()))) {
+            rtc_domain_write_access_end(restore_write_protection);
             return;
         }
         LL_RCC_SetRTCClockSource(initial_source);
@@ -1029,35 +1079,38 @@ void rtc_init_start(bool force_init) {
     } else if (source == LL_RCC_RTC_CLKSOURCE_LSI) {
         LL_RCC_LSI_Enable();
     } else if (source != LL_RCC_RTC_CLKSOURCE_HSE_DIV) {
-        HAL_PWR_EnableRTCDomainWriteProtection();
+        rtc_domain_write_access_end(restore_write_protection);
         return;
     }
 
     rtc_clock_source = source;
 
     if (!rtc_wait_clock_ready(source)) {
-        HAL_PWR_EnableRTCDomainWriteProtection();
+        rtc_domain_write_access_end(restore_write_protection);
         return;
     }
     LL_RCC_EnableRTC();
     HAL_RCC_RTCAPB_EnableClock();
     rtc_init_ok = true;
-    HAL_PWR_EnableRTCDomainWriteProtection();
+    rtc_domain_write_access_end(restore_write_protection);
 }
 
 void rtc_init_finalise(void) {
     if (!rtc_init_ok) {
+        if (rtc_lse_drive_unavailable) {
+            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC LSE low-drive state requires RTC-domain recovery"));
+        }
         mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC clock unavailable"));
     }
     if (rtc_calendar_ready) {
         return;
     }
     if (HAL_RTC_CALENDAR_IsInitialized() == HAL_RTC_CALENDAR_NOT_INITIALIZED) {
-        HAL_PWR_DisableRTCDomainWriteProtection();
+        bool restore_write_protection = rtc_domain_write_access_begin();
         HAL_RTC_DisableWriteProtection();
         if (HAL_RTC_EnterInitMode() != HAL_OK) {
             HAL_RTC_EnableWriteProtection();
-            HAL_PWR_EnableRTCDomainWriteProtection();
+            rtc_domain_write_access_end(restore_write_protection);
             mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC init-mode timeout"));
         }
         hal_rtc_config_t rtc_config = {
@@ -1092,12 +1145,11 @@ void rtc_init_finalise(void) {
         }
         HAL_RTC_ExitInitMode();
         HAL_RTC_EnableWriteProtection();
-        HAL_PWR_EnableRTCDomainWriteProtection();
+        rtc_domain_write_access_end(restore_write_protection);
         if (status != HAL_OK) {
             mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("unsupported RTC clock configuration"));
         }
-    }
-    else {
+    } else {
         hal_rtc_config_t rtc_config;
         HAL_RTC_GetConfig(&rtc_config);
         if (rtc_config.mode != HAL_RTC_MODE_BCD) {
@@ -1182,13 +1234,13 @@ mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
     MP_STATE_PORT(pyb_extint_callback)[C5_EXTI_RTC_WAKEUP_LINE] = callback;
     pyb_extint_callback_arg[C5_EXTI_RTC_WAKEUP_LINE] = MP_OBJ_NEW_SMALL_INT(C5_EXTI_RTC_WAKEUP_LINE);
 
-    HAL_PWR_DisableRTCDomainWriteProtection();
+    bool restore_write_protection = rtc_domain_write_access_begin();
     LL_RTC_DisableWriteProtection();
     LL_RTC_WAKEUP_Disable();
     LL_RTC_DisableIT_WUT();
     if (!rtc_wakeup_wait_writable()) {
         LL_RTC_EnableWriteProtection();
-        HAL_PWR_EnableRTCDomainWriteProtection();
+        rtc_domain_write_access_end(restore_write_protection);
         HAL_NVIC_EnableIRQ(RTC_IRQn);
         mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("RTC wakeup timer timeout"));
     }
@@ -1213,7 +1265,7 @@ mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
         EXTI->RPR1 = 1 << C5_EXTI_RTC_WAKEUP_LINE;
     }
     LL_RTC_EnableWriteProtection();
-    HAL_PWR_EnableRTCDomainWriteProtection();
+    rtc_domain_write_access_end(restore_write_protection);
     if (enable) {
         NVIC_SetPriority(RTC_IRQn, IRQ_PRI_RTC_WKUP);
         HAL_NVIC_EnableIRQ(RTC_IRQn);
@@ -1224,7 +1276,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_wakeup_obj, 2, 4, pyb_rtc_wakeup);
 
 
 static hal_status_t rtc_set_datetime(const hal_rtc_date_t *date, const hal_rtc_time_t *time) {
-    HAL_PWR_DisableRTCDomainWriteProtection();
+    bool restore_write_protection = rtc_domain_write_access_begin();
     HAL_RTC_DisableWriteProtection();
     hal_status_t status = HAL_RTC_EnterInitMode();
     if (status == HAL_OK) {
@@ -1235,7 +1287,7 @@ static hal_status_t rtc_set_datetime(const hal_rtc_date_t *date, const hal_rtc_t
         }
     }
     HAL_RTC_EnableWriteProtection();
-    HAL_PWR_EnableRTCDomainWriteProtection();
+    rtc_domain_write_access_end(restore_write_protection);
     return status;
 }
 

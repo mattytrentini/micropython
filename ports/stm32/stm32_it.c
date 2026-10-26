@@ -589,8 +589,26 @@ void TAMP_STAMP_IRQHandler(void) {
 }
 #endif
 
-#if !defined(STM32U5)
-#if defined(STM32C5) || defined(STM32H5)
+#if defined(STM32C5)
+void RTC_IRQHandler(void) {
+    IRQ_ENTER(RTC_IRQn);
+    if (LL_RTC_IsActiveFlag_WUT()) {
+        // DRTCP gates writes to the whole RTC domain, including SCR.CWUTF.
+        // Keep the caller's protection state and unlock only for this clear.
+        bool restore_domain_write_protection = LL_PWR_IsEnabledRTCDomainWriteProtection() != 0U;
+        if (restore_domain_write_protection) {
+            HAL_PWR_DisableRTCDomainWriteProtection();
+        }
+        LL_RTC_ClearFlag_WUT();
+        if (restore_domain_write_protection) {
+            HAL_PWR_EnableRTCDomainWriteProtection();
+        }
+        Handle_EXTI_Irq(17); // RTC EXTI line, see STM32C5 HAL EXTI mapping
+    }
+    IRQ_EXIT(RTC_IRQn);
+}
+#elif !defined(STM32U5)
+#if defined(STM32H5)
 void RTC_IRQHandler(void)
 #elif defined(STM32N6)
 #define RTC_WKUP_IRQn RTC_S_IRQn
@@ -600,12 +618,6 @@ void RTC_WKUP_IRQHandler(void)
 #endif
 {
     IRQ_ENTER(RTC_WKUP_IRQn);
-#if defined(STM32C5)
-    if (LL_RTC_IsActiveFlag_WUT()) {
-        LL_RTC_ClearFlag_WUT();
-        Handle_EXTI_Irq(17); // RTC EXTI line, see STM32C5 HAL EXTI mapping
-    }
-    #else
     #if defined(STM32G0) || defined(STM32G4) || defined(STM32WL)
     RTC->MISR &= ~RTC_MISR_WUTMF; // clear wakeup interrupt flag
     #elif defined(STM32H5) || defined(STM32N6)
@@ -616,7 +628,6 @@ void RTC_WKUP_IRQHandler(void)
     RTC->ISR &= ~RTC_ISR_WUTF; // clear wakeup interrupt flag
     #endif
     Handle_EXTI_Irq(EXTI_RTC_WAKEUP); // clear EXTI flag and execute optional callback
-    #endif
     IRQ_EXIT(RTC_WKUP_IRQn);
 }
 #endif

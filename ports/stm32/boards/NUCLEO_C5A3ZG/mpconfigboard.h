@@ -7,6 +7,7 @@
 #define MICROPY_HW_ENABLE_RTC               (1)
 // The Nucleo-64 board includes a 32.768 kHz LSE crystal.
 #define MICROPY_HW_RTC_USE_LSE              (1)
+#define MICROPY_HW_RTC_LSE_DRIVE           (LL_RCC_LSEDRIVE_MEDIUMHIGH)
 #define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_I2S1                      (1)
 #define MICROPY_HW_ENABLE_ADC               (0) // TODO: enable once ADC driver adapted
