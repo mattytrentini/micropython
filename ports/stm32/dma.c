@@ -51,7 +51,7 @@ const dma_descr_t dma_I2S_1_TX = { 1, LL_LPDMA1_REQUEST_SPI1_TX };
 
 typedef struct {
     DMA_Channel_TypeDef *channel;
-    const dma_descr_t * volatile descr;
+    const dma_descr_t *volatile descr;
     dma_irq_callback_t volatile callback;
     volatile uint32_t irq_flags;
     uint32_t ctr1;
@@ -84,13 +84,13 @@ static DMA_Channel_TypeDef *c5_dma_channel(const dma_descr_t *descr) {
 static void c5_dma_irq_enable(uint32_t index, int enable) {
     switch (index) {
         #define C5_DMA_IRQ_CASE(ch, irq) case ch: \
-            NVIC_DisableIRQ(irq); \
-            NVIC_ClearPendingIRQ(irq); \
-            if (enable) { \
-                NVIC_SetPriority(irq, IRQ_PRI_DMA); \
-                NVIC_EnableIRQ(irq); \
-            } \
-            break
+        NVIC_DisableIRQ(irq); \
+        NVIC_ClearPendingIRQ(irq); \
+        if (enable) { \
+            NVIC_SetPriority(irq, IRQ_PRI_DMA); \
+            NVIC_EnableIRQ(irq); \
+        } \
+        break
         C5_DMA_IRQ_CASE(0, LPDMA1_CH0_IRQn);
         C5_DMA_IRQ_CASE(1, LPDMA1_CH1_IRQn);
         C5_DMA_IRQ_CASE(2, LPDMA1_CH2_IRQn);
@@ -111,7 +111,7 @@ static void c5_dma_irq_enable(uint32_t index, int enable) {
         C5_DMA_IRQ_CASE(14, LPDMA2_CH6_IRQn);
         C5_DMA_IRQ_CASE(15, LPDMA2_CH7_IRQn);
         #endif
-        #undef C5_DMA_IRQ_CASE
+#undef C5_DMA_IRQ_CASE
     }
 }
 
@@ -119,16 +119,30 @@ static bool c5_dma_widths(const c5_dma_state_t *state, size_t *src_width, size_t
     uint32_t src = state->ctr1 & DMA_CTR1_SDW_LOG2;
     uint32_t dest = state->ctr1 & DMA_CTR1_DDW_LOG2;
     switch (src) {
-        case LL_DMA_SRC_DATA_WIDTH_BYTE: *src_width = 1; break;
-        case LL_DMA_SRC_DATA_WIDTH_HALFWORD: *src_width = 2; break;
-        case LL_DMA_SRC_DATA_WIDTH_WORD: *src_width = 4; break;
-        default: return false;
+        case LL_DMA_SRC_DATA_WIDTH_BYTE:
+            *src_width = 1;
+            break;
+        case LL_DMA_SRC_DATA_WIDTH_HALFWORD:
+            *src_width = 2;
+            break;
+        case LL_DMA_SRC_DATA_WIDTH_WORD:
+            *src_width = 4;
+            break;
+        default:
+            return false;
     }
     switch (dest) {
-        case LL_DMA_DEST_DATA_WIDTH_BYTE: *dest_width = 1; break;
-        case LL_DMA_DEST_DATA_WIDTH_HALFWORD: *dest_width = 2; break;
-        case LL_DMA_DEST_DATA_WIDTH_WORD: *dest_width = 4; break;
-        default: return false;
+        case LL_DMA_DEST_DATA_WIDTH_BYTE:
+            *dest_width = 1;
+            break;
+        case LL_DMA_DEST_DATA_WIDTH_HALFWORD:
+            *dest_width = 2;
+            break;
+        case LL_DMA_DEST_DATA_WIDTH_WORD:
+            *dest_width = 4;
+            break;
+        default:
+            return false;
     }
     return true;
 }
@@ -136,9 +150,9 @@ static bool c5_dma_widths(const c5_dma_state_t *state, size_t *src_width, size_t
 static bool c5_dma_transfer_valid(const c5_dma_state_t *state, const void *src, const void *dest, size_t nbytes) {
     size_t src_width, dest_width;
     return c5_dma_widths(state, &src_width, &dest_width)
-        && nbytes % src_width == 0
-        && (uintptr_t)src % src_width == 0
-        && (uintptr_t)dest % dest_width == 0;
+           && nbytes % src_width == 0
+           && (uintptr_t)src % src_width == 0
+           && (uintptr_t)dest % dest_width == 0;
 }
 
 static c5_dma_state_t *c5_dma_get(const dma_descr_t *descr) {
@@ -235,7 +249,7 @@ int dma_start(const dma_descr_t *descr, const void *src, void *dest, size_t nbyt
     LL_DMA_EnableChannel(channel);
     return 0;
 }
- 
+
 int dma_start_ping_pong(const dma_descr_t *descr, const void *src, void *dest, size_t half_nbytes) {
     c5_dma_state_t *state = c5_dma_get(descr);
     if (state == NULL || src == NULL || dest == NULL || half_nbytes == 0 || half_nbytes > 0x7fff

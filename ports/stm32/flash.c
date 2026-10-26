@@ -215,7 +215,7 @@ static uint32_t get_bank(uint32_t addr) {
     if (READ_BIT(FLASH->OPTCR, FLASH_OPTCR_SWAP_BANK) == 0) {
     #else
     if (READ_BIT(SYSCFG->MEMRMP, SYSCFG_MEMRMP_FB_MODE) == 0) {
-    #endif
+        #endif
         // no bank swap
         if (addr < (FLASH_LAYOUT_START_ADDR + FLASH_BANK_SIZE)) {
             #if defined(STM32C5)
@@ -570,9 +570,9 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
         #endif
     }
 
-#elif defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
+    #elif defined(STM32H5) || defined(STM32H7) || defined(STM32U5)
 
-#if defined(STM32H5) || defined(STM32U5)
+    #if defined(STM32H5) || defined(STM32U5)
     static const unsigned int WORD32_PER_FLASHWORD = 4;
     static const unsigned int PROGRAM_TYPE = FLASH_TYPEPROGRAM_QUADWORD;
     #else

@@ -151,7 +151,7 @@ void machine_init(void) {
         reset_cause = PYB_RESET_DEEPSLEEP;
         PWR->CR1 |= PWR_CR1_CSBF;
     } else
-#elif defined(STM32C5)
+    #elif defined(STM32C5)
     if (PWR->PMSR & PWR_PMSR_SBF) {
         reset_cause = PYB_RESET_DEEPSLEEP;
         LL_PWR_ClearFlag_SB();

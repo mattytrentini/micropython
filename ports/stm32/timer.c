@@ -945,8 +945,8 @@ static mp_obj_t pyb_timer_init_helper(pyb_timer_obj_t *self, size_t n_args, cons
 
     init->CounterMode = args[ARG_mode].u_int;
     if (!(init->CounterMode == TIMER_MODE_UP || init->CounterMode == TIMER_MODE_DOWN
-        || init->CounterMode == TIM_CR1_CMS_0 || init->CounterMode == TIM_CR1_CMS_1
-        || init->CounterMode == TIM_CR1_CMS)) {
+          || init->CounterMode == TIM_CR1_CMS_0 || init->CounterMode == TIM_CR1_CMS_1
+          || init->CounterMode == TIM_CR1_CMS)) {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("invalid mode (%d)"), init->CounterMode);
     }
 
@@ -1395,7 +1395,7 @@ static mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_ma
     }
     if (args[0].u_int >= CHANNEL_MODE_OC_TIMING
         && !(polarity == TIMER_POLARITY_HIGH || polarity == TIMER_POLARITY_LOW
-            || (!output && !encoder && polarity == TIMER_POLARITY_BOTH))) {
+             || (!output && !encoder && polarity == TIMER_POLARITY_BOTH))) {
         mp_raise_ValueError(MP_ERROR_TEXT("invalid polarity"));
     }
     const pin_af_obj_t *requested_af = NULL;
