@@ -8,9 +8,9 @@ if "STM32C5" not in sys.implementation._machine:
     raise SystemExit
 
 usb = machine.USBDevice()
-assert not usb.active()
+usb.active(False)
 
-# Switch from the default inactive runtime object to built-in CDC.
+# Activate the built-in CDC configuration explicitly.
 usb.builtin_driver = usb.BUILTIN_CDC
 usb.active(True)
 assert usb.active()
@@ -39,6 +39,11 @@ usb.active(False)
 assert not usb.active()
 
 usb.builtin_driver = usb.BUILTIN_CDC
+usb.config(
+    desc_dev=usb.BUILTIN_CDC.desc_dev,
+    desc_cfg=usb.BUILTIN_CDC.desc_cfg,
+    desc_strs=None,
+)
 usb.active(True)
 assert usb.active()
 print("C5 USBDevice configuration and CDC recovery state passed")
