@@ -256,8 +256,10 @@ the board.
 
 On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
 clocks. It supports 48 MHz HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers;
-the PSI output and PSIDIV3 USB clock remain unchanged. A clock transition is
-rejected with `OSError(EBUSY)` while a peripheral depending on the changed
+the PSI output and PSIDIV3 USB clock remain unchanged. The CMSIS system-clock
+source is compiled with the board HAL oscillator configuration so its HSE
+frequency remains available when updating `SystemCoreClock`. A clock transition
+is rejected with `OSError(EBUSY)` while a peripheral depending on the changed
 clocks is enabled. Deinitialize those peripherals first; on the Nucleo this
 includes the UART2 REPL.
 
@@ -267,6 +269,11 @@ timeout. Active non-REPL peripherals block STOP0; a connected USB device must
 already be suspended by its host. The Nucleo UART2 REPL is allowed through STOP0
 because its source clock is restored before interrupts run. `machine.deepsleep()`
 enters Standby and resets on wake; an optional timeout uses the RTC wakeup timer.
+A runtime USB device that has explicitly disconnected its D+ pull-up does not
+block STOP0; an old TinyUSB connection flag alone does not imply an active bus.
+XIAO USB recovery after software-disconnected, RTC-timed STOP0 is not yet
+working: the hardware smoke run resulted in a USB descriptor failure and
+required physical recovery. Do not rely on USB to recover from this mode.
 
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
 use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.

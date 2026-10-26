@@ -53,7 +53,7 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
-#if defined(I2C3)
+    #if defined(I2C3)
     if (I2C3->CR1 & I2C_CR1_PE) {
         return true;
     }
@@ -73,7 +73,7 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
-#if defined(SPI4)
+    #if defined(SPI4)
     if (SPI4->CR1 & SPI_CR1_SPE) {
         return true;
     }
@@ -118,6 +118,11 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
+    #if defined(TIM12)
+    if (TIM12->CR1 & TIM_CR1_CEN) {
+        return true;
+    }
+    #endif
     #if defined(TIM15)
     if (TIM15->CR1 & TIM_CR1_CEN) {
         return true;
@@ -133,7 +138,7 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
-#if defined(TIM20)
+    #if defined(TIM20)
     if (TIM20->CR1 & TIM_CR1_CEN) {
         return true;
     }
@@ -154,12 +159,12 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
-#if defined(USART4)
+    #if defined(USART4)
     if (USART4->CR1 & USART_CR1_UE) {
         return true;
     }
     #endif
-#if defined(USART5)
+    #if defined(USART5)
     if (USART5->CR1 & USART_CR1_UE) {
         return true;
     }
@@ -245,8 +250,10 @@ int powerctrl_c5_enter_stop_mode(void) {
     if (source != LL_RCC_SYS_CLKSOURCE_STATUS_PSIS && source != LL_RCC_SYS_CLKSOURCE_STATUS_HSE) {
         return -MP_EINVAL;
     }
-#if MICROPY_HW_TINYUSB_STACK
-    bool usb_connected = tud_connected();
+    #if MICROPY_HW_TINYUSB_STACK
+    // TinyUSB retains its connected flag after a software disconnect. The
+    // disabled D+ pull-up proves the runtime device is no longer on the bus.
+    bool usb_connected = tud_connected() && (USB_DRD_FS->BCDR & USB_BCDR_DPPU);
     if (usb_connected && !tud_suspended()) {
         return -MP_EBUSY;
     }
@@ -254,7 +261,7 @@ int powerctrl_c5_enter_stop_mode(void) {
     if (usb_connected) {
         LL_RCC_PSI_EnableInStopMode();
     }
-#endif
+    #endif
 
     bool tick_enabled = (SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) != 0;
     uint32_t irq_state = disable_irq();
@@ -286,11 +293,11 @@ int powerctrl_c5_enter_stop_mode(void) {
         while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSE) {
         }
     }
-#if MICROPY_HW_TINYUSB_STACK
+    #if MICROPY_HW_TINYUSB_STACK
     if (usb_connected && !psi_stop_enabled) {
         LL_RCC_PSI_DisableInStopMode();
     }
-#endif
+    #endif
     SystemCoreClockUpdate();
     powerctrl_config_systick();
     if (!tick_enabled) {

@@ -124,8 +124,11 @@ CFLAGS += -DMBOOT_VTOR=$(MBOOT_TEXT0_ADDR)
 CFLAGS += -DMICROPY_HW_VTOR=$(TEXT0_ADDR)
 
 ifeq ($(MCU_SERIES),c5)
-# C5 startup puts vector table in .vectors; remap to .isr_vector for linker
+# C5 startup puts vector table in .vectors; remap to .isr_vector for linker.
 CFLAGS += '-D__VECTOR_TABLE_ATTRIBUTE=__attribute__((used, section(".isr_vector")))'
+# SystemCoreClockUpdate uses the board's HSE_VALUE when the source is HSE.
+# This CMSIS source does not include the HAL configuration header itself.
+$(BUILD)/lib/stm32lib/CMSIS/STM32C5xx/Source/Templates/system_stm32c5xx.o: CFLAGS += -include stm32c5xx_hal_conf.h
 endif
 
 ifeq ($(MCU_SERIES),n6)
