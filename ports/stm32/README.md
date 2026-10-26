@@ -69,8 +69,12 @@ Convert the built image to UF2 with:
     $ python ../../tools/uf2conv.py -f 0x00c5c5c5 -c -o build-SEEED_XIAO_STM32C5/firmware.uf2 build-SEEED_XIAO_STM32C5/firmware.hex
 
 Double-press Reset to mount `XIAOC5BOOT`, then copy `firmware.uf2` to that
-drive. Do not flash this board's application at `0x08000000`.
-
+drive. From a working XIAO REPL, `machine.bootloader()` requests the same
+factory TinyUF2 mode without pressing Reset. It writes TinyUF2's double-reset
+marker (`0xf01669ef`) to `0x2003fffc` and performs a system reset; it neither
+enters the STM32 ROM bootloader nor replaces the factory bootloader. Physical
+Reset is still needed if the application or USB REPL is unresponsive.
+Do not flash this board's application at `0x08000000`.
 
 The STM32C5A3xG silicon revision Z (DBGMCU_IDCODE revision ID `0x1001`) has
 an LSE low-drive limitation (ST errata ES0677, section 2.2.3): `LSEDRV=00`

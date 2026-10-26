@@ -3,6 +3,7 @@
 
 #define MICROPY_PY_PYB_LEGACY               (0)
 #define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
+#define MICROPY_PY_MACHINE_BOOTLOADER       (1)
 #define MICROPY_HW_HAS_FLASH                (0)
 #define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
 #define MICROPY_HW_HAS_SWITCH               (0)
@@ -50,3 +51,7 @@
 
 #define MICROPY_BOARD_EARLY_INIT            board_early_init
 void board_early_init(void);
+
+// Enter the factory TinyUF2 bootloader, not the STM32 ROM bootloader.
+#define MICROPY_BOARD_ENTER_BOOTLOADER(nargs, args) board_enter_bootloader()
+void board_enter_bootloader(void) __attribute__((noreturn));

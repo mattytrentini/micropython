@@ -14,3 +14,11 @@ void board_early_init(void) {
     mp_hal_pin_high(pin_B14);
     mp_hal_pin_output(pin_B14);
 }
+
+void board_enter_bootloader(void) {
+    // Factory TinyUF2 checks the last SRAM word for its double-reset marker.
+    // This is outside the application heap/stack. Storage is flushed by the
+    // caller before this transient request overwrites the unused cache tail.
+    *(volatile uint32_t *)0x2003fffc = 0xf01669ef;
+    NVIC_SystemReset();
+}
