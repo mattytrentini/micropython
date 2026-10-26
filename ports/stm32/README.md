@@ -275,9 +275,10 @@ because its source clock is restored before interrupts run. `machine.deepsleep()
 enters Standby and resets on wake; an optional timeout uses the RTC wakeup timer.
 A runtime USB device that has explicitly disconnected its D+ pull-up does not
 block STOP0; an old TinyUSB connection flag alone does not imply an active bus.
-XIAO USB recovery after software-disconnected, RTC-timed STOP0 is not yet
-working: the hardware smoke run resulted in a USB descriptor failure and
-required physical recovery. Do not rely on USB to recover from this mode.
+STOP wake restores the previously enabled PSIS, PSIDIV3 and PSIK outputs;
+restoring SYSCLK alone is insufficient because STOP clears the independent
+PSIDIV3 enable used by USB. RTC-timed STOP and USB re-enumeration have been
+checked on the Nucleo at both supported system-clock frequencies.
 
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
 use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.

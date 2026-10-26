@@ -262,6 +262,7 @@ int powerctrl_c5_enter_stop_mode(void) {
         LL_RCC_PSI_EnableInStopMode();
     }
     #endif
+    uint32_t psi_outputs = RCC->CR1 & (RCC_CR1_PSISON | RCC_CR1_PSIDIV3ON | RCC_CR1_PSIKON);
 
     bool tick_enabled = (SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) != 0;
     uint32_t irq_state = disable_irq();
@@ -269,26 +270,35 @@ int powerctrl_c5_enter_stop_mode(void) {
     LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSIDIV3);
     HAL_PWR_EnterStopMode(HAL_PWR_LOW_PWR_MODE_WFI, HAL_PWR_STOP0_MODE);
 
-    // STOP wake-up selects HSIDIV3. Restore the previous board-qualified clock
-    // source without touching PSI configuration or the RTC domain.
-    if (source == LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {
-        // The PSI output and its dividers are preserved; only restart its
-        // configured source after STOP if the low-power transition stopped it.
-        if (LL_RCC_GetPSIClkSource() == LL_RCC_PSISOURCE_HSE) {
-            LL_RCC_HSE_Enable();
-            while (!LL_RCC_HSE_IsReady()) {
-            }
+    // STOP clears the PSI output enables, including USB's PSIDIV3 clock.
+    // Restore every previously enabled output, even when SYSCLK used HSE.
+    if (source == LL_RCC_SYS_CLKSOURCE_STATUS_HSE
+        || (psi_outputs && LL_RCC_GetPSIClkSource() == LL_RCC_PSISOURCE_HSE)) {
+        LL_RCC_HSE_Enable();
+        while (!LL_RCC_HSE_IsReady()) {
         }
+    }
+    if (psi_outputs & RCC_CR1_PSISON) {
         LL_RCC_PSIS_Enable();
         while (!LL_RCC_PSIS_IsReady()) {
         }
+    }
+    if (psi_outputs & RCC_CR1_PSIDIV3ON) {
+        LL_RCC_PSIDIV3_Enable();
+        while (!LL_RCC_PSIDIV3_IsReady()) {
+        }
+    }
+    if (psi_outputs & RCC_CR1_PSIKON) {
+        LL_RCC_PSIK_Enable();
+        while (!LL_RCC_PSIK_IsReady()) {
+        }
+    }
+    if (source == LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {
         LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PSIS);
         while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {
         }
     } else {
-        LL_RCC_HSE_Enable();
-        while (!LL_RCC_HSE_IsReady()) {
-        }
+        // HSE was restarted above before restoring any dependent PSI outputs.
         LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSE);
         while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSE) {
         }
