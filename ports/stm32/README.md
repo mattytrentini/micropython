@@ -255,8 +255,9 @@ legacy `pyb.SPI` API remain disabled on C5.
 Pass the I2S1 clock, word-select and data pins explicitly; the alternate
 functions are provided for PA4/PA5/PA6/PA7 and PB3/PB4/PB5. PA5 is also the
 on-board LED, and PB3/PB4/PB5 are used by the board's SPI3 configuration.
-An external codec or audio device is required; no audio loopback is wired on
-the board.
+Transfer-rate tests cover 16-/32-bit mono and stereo transmit and receive on
+the Nucleo. External hardware is still required to validate audio sample
+contents; no audio loopback is wired on the board.
 
 On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
 clocks. It supports 48 MHz HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers;

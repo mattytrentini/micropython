@@ -276,6 +276,10 @@ int dma_start_ping_pong(const dma_descr_t *descr, const void *src, void *dest, s
     c5_dma_irq_enable(descr->channel, 0);
     LL_DMA_SetLinkedListBaseAddr(channel, (uint32_t)(uintptr_t)node);
     LL_DMA_ConfigLinkUpdate(channel, LL_DMA_UPDATE_ALL, (uint32_t)(uintptr_t)node);
+    // Enable-time validation also checks the live addresses before fetching
+    // the first node. A previous transfer may have left narrower alignment.
+    LL_DMA_SetSrcAddress(channel, (uint32_t)(uintptr_t)src);
+    LL_DMA_SetDestAddress(channel, (uint32_t)(uintptr_t)dest);
     LL_DMA_SetBlkDataLength(channel, 0);
     state->circular = 1;
     state->running = 1;
@@ -373,6 +377,19 @@ int dma_deinit(const dma_descr_t *descr) {
     __DMB();
     memset(&c5_nodes[descr->channel], 0, sizeof(c5_nodes[descr->channel]));
     memset(state, 0, sizeof(*state));
+    // Release the engine only after its last owner is gone. Keeping this
+    // clock enabled would permanently block clock changes and STOP mode.
+    uint32_t first = descr->channel & ~7U;
+    for (uint32_t i = first; i < first + 8; ++i) {
+        if (c5_dma[i].claimed) {
+            return 0;
+        }
+    }
+    if (first == 0) {
+        LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_LPDMA1);
+    } else {
+        LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_LPDMA2);
+    }
     return 0;
 }
 

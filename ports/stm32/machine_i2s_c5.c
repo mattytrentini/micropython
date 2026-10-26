@@ -78,15 +78,24 @@ typedef struct _machine_i2s_obj_t {
 
 static uint32_t i2s_frequency(int32_t rate) {
     switch (rate) {
-        case 8000: return HAL_I2S_MASTER_AUDIO_FREQ_8_KHZ;
-        case 11025: return HAL_I2S_MASTER_AUDIO_FREQ_11_KHZ;
-        case 16000: return HAL_I2S_MASTER_AUDIO_FREQ_16_KHZ;
-        case 22050: return HAL_I2S_MASTER_AUDIO_FREQ_22_KHZ;
-        case 32000: return HAL_I2S_MASTER_AUDIO_FREQ_32_KHZ;
-        case 44100: return HAL_I2S_MASTER_AUDIO_FREQ_44_KHZ;
-        case 48000: return HAL_I2S_MASTER_AUDIO_FREQ_48_KHZ;
-        case 96000: return HAL_I2S_MASTER_AUDIO_FREQ_96_KHZ;
-        case 192000: return HAL_I2S_MASTER_AUDIO_FREQ_192_KHZ;
+        case 8000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_8_KHZ;
+        case 11025:
+            return HAL_I2S_MASTER_AUDIO_FREQ_11_KHZ;
+        case 16000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_16_KHZ;
+        case 22050:
+            return HAL_I2S_MASTER_AUDIO_FREQ_22_KHZ;
+        case 32000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_32_KHZ;
+        case 44100:
+            return HAL_I2S_MASTER_AUDIO_FREQ_44_KHZ;
+        case 48000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_48_KHZ;
+        case 96000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_96_KHZ;
+        case 192000:
+            return HAL_I2S_MASTER_AUDIO_FREQ_192_KHZ;
         default:
             mp_raise_ValueError(MP_ERROR_TEXT("unsupported I2S rate"));
     }
@@ -220,10 +229,12 @@ static bool i2s_init(machine_i2s_obj_t *self) {
         return false;
     }
 
+    // Receive mapping consumes 32-bit wire slots, including for 16-bit users.
+    bool slots_32_bit = self->mode == MICROPY_PY_MACHINE_I2S_CONSTANT_RX || self->bits == 32;
     hal_i2s_master_config_t config = {
         .mode = self->mode,
         .standard = HAL_I2S_STANDARD_PHILIPS,
-        .data_format = self->bits == 32 ? HAL_I2S_DATA_FORMAT_32_BIT : HAL_I2S_DATA_FORMAT_16_BIT,
+        .data_format = slots_32_bit ? HAL_I2S_DATA_FORMAT_32_BIT : HAL_I2S_DATA_FORMAT_16_BIT,
         .clock_polarity = HAL_I2S_CLOCK_POLARITY_LOW,
         .bit_order = HAL_I2S_MSB_FIRST,
         .audio_frequency = i2s_frequency(self->rate),
