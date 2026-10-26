@@ -42,6 +42,13 @@
 #define MICROPY_HW_I2C1_SDA                  (pin_B7)
 #define MICROPY_HW_I2C2_SCL                  (pin_B3)
 #define MICROPY_HW_I2C2_SDA                  (pin_B4)
+// The onboard transceiver is wired to FDCAN2; see the Seeed schematic and
+// CANFD board guide. PB5 is RX (AF9), PB13 is TX (AF9).
+#define MICROPY_HW_CAN1_TX                  (pin_B13)
+#define MICROPY_HW_CAN1_RX                  (pin_B5)
+#define MICROPY_HW_CAN1_FDCAN_ID             (2)
+#define MICROPY_HW_CAN1_STANDBY             (pin_B14)
+#define MICROPY_HW_CAN1_STANDBY_ACTIVE      (0)
 
 
 // Green user LED, active low.

@@ -47,6 +47,9 @@
 #define MICROPY_HW_I2C1_SCL                  (pin_B6)
 #define MICROPY_HW_I2C1_SDA                  (pin_B7)
 #define MICROPY_HW_I2C2_SCL                  (pin_B3)
+// FDCAN1 uses PB8/PB9 (AF9), as specified by the STM32C5A3 alternate-function table.
+#define MICROPY_HW_CAN1_TX                  (pin_B9)
+#define MICROPY_HW_CAN1_RX                  (pin_B8)
 #define MICROPY_HW_I2C2_SDA                  (pin_B4)
 // Connect REPL to UART2 which is provided on ST-Link USB interface
 #define MICROPY_HW_UART_REPL                PYB_UART_2

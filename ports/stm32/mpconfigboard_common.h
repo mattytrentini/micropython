@@ -764,6 +764,12 @@ void mp_usbd_ll_init(void);
 #define MICROPY_HW_ENABLE_HW_I2C_TARGET (0)
 #endif
 
+// C5 exposes FDCAN through the machine.CAN backend, which uses the CubeMX2 HAL
+// directly. The legacy pyb.CAN abstraction targets the previous HAL API.
+#if defined(STM32C5)
+#define MICROPY_HW_ENABLE_CAN (0)
+#define MICROPY_HW_MAX_CAN (0)
+#else
 // Enable CAN if there are any peripherals defined
 #if defined(MICROPY_HW_CAN1_TX) || defined(MICROPY_HW_CAN2_TX) || defined(MICROPY_HW_CAN3_TX)
 #define MICROPY_HW_ENABLE_CAN (1)
@@ -781,6 +787,7 @@ void mp_usbd_ll_init(void);
 #elif defined(MICROPY_HW_CAN1_TX)
 #define MICROPY_HW_MAX_CAN (1)
 #endif
+#endif // !STM32C5
 
 // Enable I2S if there are any peripherals defined
 #if defined(MICROPY_HW_I2S1) || defined(MICROPY_HW_I2S2)

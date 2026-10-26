@@ -184,6 +184,13 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
         return true;
     }
     #endif
+    #if defined(FDCAN1)
+    // The CAN backend owns the shared clock until deinit. STOP does not yet
+    // negotiate CAN bus sleep or restore an in-flight controller transaction.
+    if (HAL_RCC_FDCAN_IsEnabledClock()) {
+        return true;
+    }
+    #endif
 
     // LPDMA ownership is maintained by the C5 DMA backend. If either engine's
     // clock is enabled, conservatively avoid changing clocks under a transfer.

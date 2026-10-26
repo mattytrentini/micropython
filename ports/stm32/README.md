@@ -306,3 +306,20 @@ Cortex-M cycle counter. CPU timing enables the trace clock independently of
 the counter enable, recovering bootloader/debugger states that otherwise leave
 the counter stopped. C5 microsecond delays also use this counter while IRQs
 are disabled, rather than relying on an empty C delay loop.
+
+`machine.CAN` exposes one configured Classical CAN bus on each board. The
+backend uses the C5 FDCAN peripheral in Classical CAN mode, with a maximum
+payload of eight bytes; CAN-FD and bit-rate switching are not enabled.
+Standard/extended identifiers, RTR frames, acceptance filters, polling,
+soft/hard callbacks and transmit cancellation are supported.
+
+`CAN(1, 500_000)` selects FDCAN1 on PB9 (TX)/PB8 (RX) on the Nucleo, which
+requires an external transceiver. On the XIAO, logical bus 1 selects FDCAN2 on
+PB13 (TX)/PB5 (RX), connected to the onboard transceiver. XIAO PB14 is held
+high in standby and driven low after successful CAN initialization; deinit
+restores standby. External-bus operation requires appropriate wiring, common
+ground and termination; internal silent loopback does not validate these.
+
+CAN uses the independent 48 MHz HSE kernel clock. Deinitialize CAN before
+changing the system clock or entering STOP. As with the existing STM32 CAN
+backend, `MODE_SLEEP` selects bus monitoring, not hardware low-power sleep.

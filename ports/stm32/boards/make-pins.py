@@ -36,6 +36,18 @@ CONDITIONAL_VAR = {
     "CAN": "MICROPY_HW_CAN{num}_TX",
 }
 
+
+def af_enable_condition(af_fn, af_unit):
+    condition = "defined({:s})".format(CONDITIONAL_VAR[af_fn].format(num=af_unit))
+    if af_fn == "CAN":
+        # A C5 board can map its single logical CAN bus to FDCAN2.
+        condition += (
+            " || (defined(STM32C5) && defined(MICROPY_HW_CAN1_FDCAN_ID)"
+            " && MICROPY_HW_CAN1_FDCAN_ID == {:d})".format(af_unit)
+        )
+    return condition
+
+
 # Contains the result of parsing an cell from af.csv.
 PinAf = namedtuple(
     "PinAf",
@@ -184,9 +196,7 @@ class Stm32Pin(boardgen.Pin):
         for af in self._afs:
             if af.af_fn in CONDITIONAL_VAR:
                 print(
-                    "    #if defined({:s})".format(
-                        CONDITIONAL_VAR[af.af_fn].format(num=af.af_unit)
-                    ),
+                    "    #if {:s}".format(af_enable_condition(af.af_fn, af.af_unit)),
                     file=out_source,
                 )
             if af.af_supported:
@@ -316,7 +326,7 @@ class Stm32PinGenerator(boardgen.PinGenerator):
             name, af_fn, af_unit = key
             if af_fn in CONDITIONAL_VAR:
                 print(
-                    "    #if defined({:s})".format(CONDITIONAL_VAR[af_fn].format(num=af_unit)),
+                    "    #if {:s}".format(af_enable_condition(af_fn, af_unit)),
                     file=out_af_const,
                 )
             print(

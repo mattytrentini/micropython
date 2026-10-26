@@ -1,0 +1,5 @@
+C5 CAN classic identifiers, payloads and RTR
+C5 CAN standard and extended filter masks
+C5 CAN coalesced indexed completions
+C5 CAN cancellation and IRQ-disable recovery
+C5 CAN soft and hard RX/TX callbacks

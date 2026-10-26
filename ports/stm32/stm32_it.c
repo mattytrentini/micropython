@@ -108,6 +108,32 @@ C5_DMA_IRQ_HANDLER(LPDMA2_CH6_IRQHandler, LPDMA2_CH6_IRQn, 14)
 C5_DMA_IRQ_HANDLER(LPDMA2_CH7_IRQHandler, LPDMA2_CH7_IRQn, 15)
 #endif
 #undef C5_DMA_IRQ_HANDLER
+#if defined(STM32C5) && defined(MICROPY_HW_CAN1_TX)
+void machine_can_c5_irq_handler(void);
+#if defined(MICROPY_HW_CAN1_FDCAN_ID) && MICROPY_HW_CAN1_FDCAN_ID == 2
+void FDCAN2_IT0_IRQHandler(void) {
+    IRQ_ENTER(FDCAN2_IT0_IRQn);
+    machine_can_c5_irq_handler();
+    IRQ_EXIT(FDCAN2_IT0_IRQn);
+}
+void FDCAN2_IT1_IRQHandler(void) {
+    IRQ_ENTER(FDCAN2_IT1_IRQn);
+    machine_can_c5_irq_handler();
+    IRQ_EXIT(FDCAN2_IT1_IRQn);
+}
+#else
+void FDCAN1_IT0_IRQHandler(void) {
+    IRQ_ENTER(FDCAN1_IT0_IRQn);
+    machine_can_c5_irq_handler();
+    IRQ_EXIT(FDCAN1_IT0_IRQn);
+}
+void FDCAN1_IT1_IRQHandler(void) {
+    IRQ_ENTER(FDCAN1_IT1_IRQn);
+    machine_can_c5_irq_handler();
+    IRQ_EXIT(FDCAN1_IT1_IRQn);
+}
+#endif
+#endif
 #endif
 
 #if MICROPY_HW_TINYUSB_STACK

@@ -49,6 +49,7 @@
 #include "stm32c5xx_hal_spi.h"
 #include "stm32c5xx_hal_tim.h"
 #include "stm32c5xx_hal_uart.h"
+#include "stm32c5xx_hal_fdcan.h"
 #include "stm32c5xx_ll_gpio.h"
 #include "stm32c5xx_ll_bus.h"
 #include "stm32c5xx_ll_rcc.h"

@@ -780,10 +780,10 @@ soft_reset_exit:
     #endif
     #if MICROPY_HW_ENABLE_CAN
     pyb_can_deinit_all();
+    #endif
     #if MICROPY_PY_MACHINE_CAN
     machine_can_deinit_all();
     #endif
-    #endif // MICROPY_HW_ENABLE_CAN
     #if MICROPY_HW_ENABLE_DAC
     dac_deinit_all();
     #endif
