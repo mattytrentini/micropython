@@ -69,6 +69,7 @@ else:
 def new_controller():
     if use_hardware_controller:
         from machine import I2C
+
         return I2C(2, freq=100_000)
     return SoftI2C(**args_controller)
 

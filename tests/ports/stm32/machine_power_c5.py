@@ -9,8 +9,10 @@ if "STM32C5" not in sys.implementation._machine:
     raise SystemExit
 
 freq = machine.freq()
-assert freq in ((48000000, 48000000, 48000000, 48000000),
-                (144000000, 144000000, 144000000, 144000000)), freq
+assert freq in (
+    (48000000, 48000000, 48000000, 48000000),
+    (144000000, 144000000, 144000000, 144000000),
+), freq
 
 # Clock changes preserve the independent PSI/PSIDIV3 USB clock. Active
 # peripherals may reject the transition; in that case no clock may change.

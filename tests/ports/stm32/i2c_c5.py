@@ -33,8 +33,13 @@ for bus in buses:
     expect_oserror(19, lambda: i2c.writeto(0x55, b""))
     expect_oserror(19, lambda: i2c.writevto(0x55, (b"", b"data", b"")))
 
-    for kwargs in ({"freq": 0}, {"freq": -1}, {"freq": 99_999},
-                   {"timeout": -1}, {"timeout": 65_535_001}):
+    for kwargs in (
+        {"freq": 0},
+        {"freq": -1},
+        {"freq": 99_999},
+        {"timeout": -1},
+        {"timeout": 65_535_001},
+    ):
         expect_oserror(22, lambda: I2C(bus, **kwargs))  # EINVAL, not truncated deadlines.
         expect_oserror(22, lambda: i2c.init(**kwargs))
 
@@ -56,8 +61,7 @@ for bus in buses:
 if imu_bus is None:
     # Different deadlines check that initializing one controller does not alter another.
     faults = ((1, Pin.cpu.B6, 4, 5000, 5), (2, Pin.cpu.B3, 9, 30000, 30))
-    controllers = [I2C(bus, freq=100_000, timeout=timeout)
-                   for bus, scl, af, timeout, ms in faults]
+    controllers = [I2C(bus, freq=100_000, timeout=timeout) for bus, scl, af, timeout, ms in faults]
     for (bus, scl, af, timeout, timeout_ms), i2c in zip(faults, controllers):
         try:
             # An internal pull-down holds the actual AF open-drain SCL pad low.

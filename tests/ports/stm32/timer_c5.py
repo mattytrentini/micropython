@@ -51,6 +51,7 @@ for ident in (2, 3, 4, 5):
     assert timer.counter() == 0xF1234567
 print("C5 unsigned counters OK")
 
+
 # Replacing a non-head channel must retain the others and their interrupts.
 def sibling(timer):
     hits[1] += 1
@@ -187,9 +188,11 @@ for polarity, expected in ((Timer.RISING, 5), (Timer.FALLING, 5), (Timer.BOTH, 1
             time.sleep_ms(2)
         assert hits[0] == expected
         assert all(0 <= value <= 59999 for value in captures[:expected])
-        for previous, current in zip(captures[:expected - 1], captures[1:expected]):
+        for previous, current in zip(captures[: expected - 1], captures[1:expected]):
             elapsed = (current - previous) % 60000
-            assert (1500 <= elapsed <= 3500) if polarity == Timer.BOTH else (3000 <= elapsed <= 5500)
+            assert (
+                (1500 <= elapsed <= 3500) if polarity == Timer.BOTH else (3000 <= elapsed <= 5500)
+            )
     finally:
         timer.deinit()
         pin.init(Pin.ANALOG)

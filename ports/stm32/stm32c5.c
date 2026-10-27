@@ -34,4 +34,3 @@ uint64_t mp_hal_time_ns(void) {
     mp_raise_NotImplementedError(MP_ERROR_TEXT("RTC time is not supported on STM32C5"));
     #endif
 }
-

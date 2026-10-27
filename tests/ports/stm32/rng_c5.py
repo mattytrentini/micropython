@@ -11,4 +11,3 @@ assert all(0 <= value <= 0x3FFFFFFF for value in values), values
 assert len(set(values)) > 1, values
 
 print("C5 machine.rng returns changing values")
-

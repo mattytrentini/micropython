@@ -11,19 +11,49 @@ static void timer_c5_clock_enable(uint id, bool reset) {
     uint32_t clock;
     bool apb2 = false;
     switch (id) {
-        case 2: clock = LL_APB1_GRP1_PERIPH_TIM2; break;
-        case 3: clock = LL_APB1_GRP1_PERIPH_TIM3; break;
-        case 4: clock = LL_APB1_GRP1_PERIPH_TIM4; break;
-        case 5: clock = LL_APB1_GRP1_PERIPH_TIM5; break;
-        case 6: clock = LL_APB1_GRP1_PERIPH_TIM6; break;
-        case 7: clock = LL_APB1_GRP1_PERIPH_TIM7; break;
-        case 12: clock = LL_APB1_GRP1_PERIPH_TIM12; break;
-        case 1: clock = LL_APB2_GRP1_PERIPH_TIM1; apb2 = true; break;
-        case 8: clock = LL_APB2_GRP1_PERIPH_TIM8; apb2 = true; break;
-        case 15: clock = LL_APB2_GRP1_PERIPH_TIM15; apb2 = true; break;
-        case 16: clock = LL_APB2_GRP1_PERIPH_TIM16; apb2 = true; break;
-        case 17: clock = LL_APB2_GRP1_PERIPH_TIM17; apb2 = true; break;
-        default: mp_raise_ValueError(MP_ERROR_TEXT("invalid timer"));
+        case 2:
+            clock = LL_APB1_GRP1_PERIPH_TIM2;
+            break;
+        case 3:
+            clock = LL_APB1_GRP1_PERIPH_TIM3;
+            break;
+        case 4:
+            clock = LL_APB1_GRP1_PERIPH_TIM4;
+            break;
+        case 5:
+            clock = LL_APB1_GRP1_PERIPH_TIM5;
+            break;
+        case 6:
+            clock = LL_APB1_GRP1_PERIPH_TIM6;
+            break;
+        case 7:
+            clock = LL_APB1_GRP1_PERIPH_TIM7;
+            break;
+        case 12:
+            clock = LL_APB1_GRP1_PERIPH_TIM12;
+            break;
+        case 1:
+            clock = LL_APB2_GRP1_PERIPH_TIM1;
+            apb2 = true;
+            break;
+        case 8:
+            clock = LL_APB2_GRP1_PERIPH_TIM8;
+            apb2 = true;
+            break;
+        case 15:
+            clock = LL_APB2_GRP1_PERIPH_TIM15;
+            apb2 = true;
+            break;
+        case 16:
+            clock = LL_APB2_GRP1_PERIPH_TIM16;
+            apb2 = true;
+            break;
+        case 17:
+            clock = LL_APB2_GRP1_PERIPH_TIM17;
+            apb2 = true;
+            break;
+        default:
+            mp_raise_ValueError(MP_ERROR_TEXT("invalid timer"));
     }
     if (apb2) {
         LL_APB2_GRP1_EnableClock(clock);
@@ -67,19 +97,27 @@ static void timer_c5_base_init(timer_handle_t *handle) {
 
 static bool timer_c5_has_channel(TIM_TypeDef *tim, uint channel) {
     switch (channel) {
-        case 1: return IS_TIM_CC1_INSTANCE(tim);
-        case 2: return IS_TIM_CC2_INSTANCE(tim);
-        case 3: return IS_TIM_CC3_INSTANCE(tim);
-        default: return IS_TIM_CC4_INSTANCE(tim);
+        case 1:
+            return IS_TIM_CC1_INSTANCE(tim);
+        case 2:
+            return IS_TIM_CC2_INSTANCE(tim);
+        case 3:
+            return IS_TIM_CC3_INSTANCE(tim);
+        default:
+            return IS_TIM_CC4_INSTANCE(tim);
     }
 }
 
 static bool timer_c5_has_complementary(TIM_TypeDef *tim, uint channel) {
     switch (channel) {
-        case 1: return IS_TIM_CC1N_INSTANCE(tim);
-        case 2: return IS_TIM_CC2N_INSTANCE(tim);
-        case 3: return IS_TIM_CC3N_INSTANCE(tim);
-        default: return IS_TIM_CC4N_INSTANCE(tim);
+        case 1:
+            return IS_TIM_CC1N_INSTANCE(tim);
+        case 2:
+            return IS_TIM_CC2N_INSTANCE(tim);
+        case 3:
+            return IS_TIM_CC3N_INSTANCE(tim);
+        default:
+            return IS_TIM_CC4N_INSTANCE(tim);
     }
 }
 

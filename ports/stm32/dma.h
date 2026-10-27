@@ -32,7 +32,7 @@
 #include "dma_c5.h"
 #else
 typedef struct _dma_descr_t dma_descr_t;
- 
+
 
 #if defined(STM32H5) || defined(STM32U5)
 // STM32H5/U5 GPDMA doesn't feature circular mode directly, so define doesn't exist in

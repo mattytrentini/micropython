@@ -96,13 +96,19 @@ int spi_find_index(mp_obj_t id) {
     if (mp_obj_is_str(id)) {
         const char *name = mp_obj_str_get_str(id);
         #if defined(MICROPY_HW_SPI1_NAME)
-        if (strcmp(name, MICROPY_HW_SPI1_NAME) == 0) { index = 1; }
+        if (strcmp(name, MICROPY_HW_SPI1_NAME) == 0) {
+            index = 1;
+        }
         #endif
         #if defined(MICROPY_HW_SPI2_NAME)
-        if (strcmp(name, MICROPY_HW_SPI2_NAME) == 0) { index = 2; }
+        if (strcmp(name, MICROPY_HW_SPI2_NAME) == 0) {
+            index = 2;
+        }
         #endif
         #if defined(MICROPY_HW_SPI3_NAME)
-        if (strcmp(name, MICROPY_HW_SPI3_NAME) == 0) { index = 3; }
+        if (strcmp(name, MICROPY_HW_SPI3_NAME) == 0) {
+            index = 3;
+        }
         #endif
         (void)name;
     } else {
@@ -136,33 +142,62 @@ void spi_set_params(const spi_t *self, uint32_t prescale, int32_t baudrate,
         uint32_t clock = HAL_RCC_SPI_GetKernelClkFreq(s->instance);
         uint32_t div = prescale != 0xffffffff ? prescale : (clock + baudrate - 1) / baudrate;
         s->divider = 0;
-        while (s->divider < 7 && (2u << s->divider) < div) { ++s->divider; }
+        while (s->divider < 7 && (2u << s->divider) < div) {
+            ++s->divider;
+        }
         s->baudrate = clock >> (s->divider + 1);
     }
-    if (polarity != -1) { s->polarity = polarity; }
-    if (phase != -1) { s->phase = phase; }
-    if (bits != -1) { s->bits = bits; }
-    if (firstbit != -1) { s->lsb = firstbit == SPI_FIRSTBIT_LSB; }
-    if (s->initialized) { spi_c5_configure(self); }
+    if (polarity != -1) {
+        s->polarity = polarity;
+    }
+    if (phase != -1) {
+        s->phase = phase;
+    }
+    if (bits != -1) {
+        s->bits = bits;
+    }
+    if (firstbit != -1) {
+        s->lsb = firstbit == SPI_FIRSTBIT_LSB;
+    }
+    if (s->initialized) {
+        spi_c5_configure(self);
+    }
     enable_irq(irq);
 }
 
 int spi_init(const spi_t *self, bool enable_nss_pin) {
-    if (enable_nss_pin) { return -MP_EOPNOTSUPP; }
-    if (self->spi->busy) { return -MP_EBUSY; }
+    if (enable_nss_pin) {
+        return -MP_EOPNOTSUPP;
+    }
+    if (self->spi->busy) {
+        return -MP_EBUSY;
+    }
     const machine_pin_obj_t *pins[3] = {NULL, NULL, NULL};
     unsigned id = self - spi_obj + 1;
     switch (id) {
         #if defined(MICROPY_HW_SPI1_SCK)
-        case 1: pins[0] = MICROPY_HW_SPI1_SCK; pins[1] = MICROPY_HW_SPI1_MOSI; pins[2] = MICROPY_HW_SPI1_MISO; break;
+        case 1:
+            pins[0] = MICROPY_HW_SPI1_SCK;
+            pins[1] = MICROPY_HW_SPI1_MOSI;
+            pins[2] = MICROPY_HW_SPI1_MISO;
+            break;
         #endif
         #if defined(MICROPY_HW_SPI2_SCK)
-        case 2: pins[0] = MICROPY_HW_SPI2_SCK; pins[1] = MICROPY_HW_SPI2_MOSI; pins[2] = MICROPY_HW_SPI2_MISO; break;
+        case 2:
+            pins[0] = MICROPY_HW_SPI2_SCK;
+            pins[1] = MICROPY_HW_SPI2_MOSI;
+            pins[2] = MICROPY_HW_SPI2_MISO;
+            break;
         #endif
         #if defined(MICROPY_HW_SPI3_SCK)
-        case 3: pins[0] = MICROPY_HW_SPI3_SCK; pins[1] = MICROPY_HW_SPI3_MOSI; pins[2] = MICROPY_HW_SPI3_MISO; break;
+        case 3:
+            pins[0] = MICROPY_HW_SPI3_SCK;
+            pins[1] = MICROPY_HW_SPI3_MOSI;
+            pins[2] = MICROPY_HW_SPI3_MISO;
+            break;
         #endif
-        default: return -MP_EINVAL;
+        default:
+            return -MP_EINVAL;
     }
     for (unsigned i = 0; i < 3; ++i) {
         if (pins[i] != NULL && !mp_hal_pin_config_alt(pins[i], MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, AF_FN_SPI, id)) {
@@ -181,13 +216,19 @@ static void spi_c5_stop(const spi_t *self, bool reset) {
     spi_state_t *s = self->spi;
     s->instance->CFG1 &= ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
     s->instance->CR1 &= ~SPI_CR1_SPE;
-    if (reset) { spi_c5_reset(self); }
-    if (reset) { spi_c5_configure(self); }
+    if (reset) {
+        spi_c5_reset(self);
+    }
+    if (reset) {
+        spi_c5_configure(self);
+    }
     s->instance->IFCR = SPI_C5_CLEAR;
 }
 
 void spi_deinit(const spi_t *self) {
-    if (self->spi->busy) { mp_raise_OSError(MP_EBUSY); }
+    if (self->spi->busy) {
+        mp_raise_OSError(MP_EBUSY);
+    }
     if (self->spi->initialized) {
         spi_c5_stop(self, true);
         spi_c5_clock(self, false);
@@ -197,7 +238,9 @@ void spi_deinit(const spi_t *self) {
 
 void spi_deinit_all(void) {
     for (unsigned i = 0; i < 3; ++i) {
-        if (spi_obj[i].spi != NULL) { spi_deinit(&spi_obj[i]); }
+        if (spi_obj[i].spi != NULL) {
+            spi_deinit(&spi_obj[i]);
+        }
     }
 }
 
@@ -210,7 +253,9 @@ typedef struct _spi_c5_deadline_t {
 } spi_c5_deadline_t;
 
 static int spi_c5_check(SPI_TypeDef *hw, spi_c5_deadline_t *deadline, bool poll_vm) {
-    if (hw->SR & SPI_C5_ERRORS) { return -MP_EIO; }
+    if (hw->SR & SPI_C5_ERRORS) {
+        return -MP_EIO;
+    }
     if (deadline->wall_clock) {
         if ((uint32_t)(mp_hal_ticks_ms() - deadline->started_ms) >= deadline->timeout_ms) {
             return -MP_ETIMEDOUT;
@@ -220,10 +265,14 @@ static int spi_c5_check(SPI_TypeDef *hw, spi_c5_deadline_t *deadline, bool poll_
         uint32_t now = mp_hal_ticks_cpu();
         uint32_t elapsed = now - deadline->previous;
         deadline->previous = now;
-        if (elapsed >= deadline->remaining) { return -MP_ETIMEDOUT; }
+        if (elapsed >= deadline->remaining) {
+            return -MP_ETIMEDOUT;
+        }
         deadline->remaining -= elapsed;
     }
-    if (poll_vm) { mp_event_wait_ms(1); }
+    if (poll_vm) {
+        mp_event_wait_ms(1);
+    }
     return 0;
 }
 
@@ -239,35 +288,56 @@ static int spi_c5_chunk(const spi_t *self, size_t len, const uint8_t *src, uint8
     for (size_t i = 0; i < len; i += width) {
         while (!(hw->SR & SPI_SR_TXP)) {
             int ret = spi_c5_check(hw, deadline, false);
-            if (ret != 0) { return ret; }
+            if (ret != 0) {
+                return ret;
+            }
         }
         uint16_t value = 0xffff;
         if (src) {
-            if (width == 1) { value = src[i]; }
-            else { memcpy(&value, src + i, 2); }
+            if (width == 1) {
+                value = src[i];
+            } else {
+                memcpy(&value, src + i, 2);
+            }
         }
-        if (width == 1) { LL_SPI_TransmitData8(hw, value); }
-        else { LL_SPI_TransmitData16(hw, value); }
+        if (width == 1) {
+            LL_SPI_TransmitData8(hw, value);
+        } else {
+            LL_SPI_TransmitData16(hw, value);
+        }
         while (!(hw->SR & SPI_SR_RXP)) {
             int ret = spi_c5_check(hw, deadline, false);
-            if (ret != 0) { return ret; }
+            if (ret != 0) {
+                return ret;
+            }
         }
         value = width == 1 ? LL_SPI_ReceiveData8(hw) : LL_SPI_ReceiveData16(hw);
         if (dest) {
-            if (width == 1) { dest[i] = value; }
-            else { memcpy(dest + i, &value, 2); }
+            if (width == 1) {
+                dest[i] = value;
+            } else {
+                memcpy(dest + i, &value, 2);
+            }
         }
         if ((i & 127) == 0) {
             int ret = spi_c5_check(hw, deadline, false);
-            if (ret != 0) { return ret; }
-            if (poll_vm) { mp_event_handle_nowait(); }
+            if (ret != 0) {
+                return ret;
+            }
+            if (poll_vm) {
+                mp_event_handle_nowait();
+            }
         }
     }
     while ((hw->SR & (SPI_SR_EOT | SPI_SR_TXC)) != (SPI_SR_EOT | SPI_SR_TXC)) {
         int ret = spi_c5_check(hw, deadline, false);
-        if (ret != 0) { return ret; }
+        if (ret != 0) {
+            return ret;
+        }
     }
-    if (hw->SR & SPI_C5_ERRORS) { return -MP_EIO; }
+    if (hw->SR & SPI_C5_ERRORS) {
+        return -MP_EIO;
+    }
     hw->CFG1 &= ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
     hw->CR1 &= ~SPI_CR1_SPE;
     return 0;
@@ -275,10 +345,18 @@ static int spi_c5_chunk(const spi_t *self, size_t len, const uint8_t *src, uint8
 
 void spi_transfer(const spi_t *self, size_t len, const uint8_t *src, uint8_t *dest, uint32_t timeout) {
     spi_state_t *s = self->spi;
-    if (!s->initialized) { mp_raise_OSError(MP_ENODEV); }
-    if (s->bits == 16 && (len & 1)) { mp_raise_ValueError(MP_ERROR_TEXT("16-bit SPI requires an even byte count")); }
-    if (s->busy) { mp_raise_OSError(MP_EBUSY); }
-    if (len == 0) { return; }
+    if (!s->initialized) {
+        mp_raise_OSError(MP_ENODEV);
+    }
+    if (s->bits == 16 && (len & 1)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("16-bit SPI requires an even byte count"));
+    }
+    if (s->busy) {
+        mp_raise_OSError(MP_EBUSY);
+    }
+    if (len == 0) {
+        return;
+    }
     s->busy = true;
     bool poll_vm = query_irq() == 0 && __get_IPSR() == 0;
     spi_c5_deadline_t deadline = {
@@ -290,16 +368,24 @@ void spi_transfer(const spi_t *self, size_t len, const uint8_t *src, uint8_t *de
         int ret = 0;
         while (ret == 0 && len) {
             size_t chunk = len < 65535 ? len : 65535;
-            if (s->bits == 16) { chunk &= ~(size_t)1; }
+            if (s->bits == 16) {
+                chunk &= ~(size_t)1;
+            }
             ret = spi_c5_chunk(self, chunk, src, dest, poll_vm, &deadline);
             len -= chunk;
-            if (src) { src += chunk; }
-            if (dest) { dest += chunk; }
+            if (src) {
+                src += chunk;
+            }
+            if (dest) {
+                dest += chunk;
+            }
         }
         nlr_pop();
         spi_c5_stop(self, ret != 0);
         s->busy = false;
-        if (ret != 0) { mp_raise_OSError(-ret); }
+        if (ret != 0) {
+            mp_raise_OSError(-ret);
+        }
     } else {
         spi_c5_stop(self, true);
         s->busy = false;
@@ -318,14 +404,20 @@ void spi_print(const mp_print_t *print, const spi_t *self, bool legacy) {
 }
 
 const spi_t *spi_from_mp_obj(mp_obj_t obj) {
-    if (!mp_obj_is_type(obj, &machine_spi_type)) { mp_raise_TypeError(MP_ERROR_TEXT("expecting an SPI object")); }
+    if (!mp_obj_is_type(obj, &machine_spi_type)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("expecting an SPI object"));
+    }
     return ((machine_hard_spi_obj_t *)MP_OBJ_TO_PTR(obj))->spi;
 }
 
 mp_obj_base_t *mp_hal_get_spi_obj(mp_obj_t obj) {
-    if (mp_obj_is_type(obj, &machine_spi_type)) { return MP_OBJ_TO_PTR(obj); }
+    if (mp_obj_is_type(obj, &machine_spi_type)) {
+        return MP_OBJ_TO_PTR(obj);
+    }
     #if MICROPY_PY_MACHINE_SOFTSPI
-    if (mp_obj_is_type(obj, &mp_machine_soft_spi_type)) { return MP_OBJ_TO_PTR(obj); }
+    if (mp_obj_is_type(obj, &mp_machine_soft_spi_type)) {
+        return MP_OBJ_TO_PTR(obj);
+    }
     #endif
     mp_raise_TypeError(MP_ERROR_TEXT("expecting an SPI object"));
 }
@@ -336,7 +428,9 @@ static int spi_c5_proto_ioctl(void *self_in, uint32_t cmd) {
         spi_set_params(self->spi, 0xffffffff, self->baudrate, self->polarity, self->phase, self->bits, self->firstbit);
         return spi_init(self->spi, false);
     }
-    if (cmd == MP_SPI_IOCTL_DEINIT) { spi_deinit(self->spi); }
+    if (cmd == MP_SPI_IOCTL_DEINIT) {
+        spi_deinit(self->spi);
+    }
     return 0;
 }
 
