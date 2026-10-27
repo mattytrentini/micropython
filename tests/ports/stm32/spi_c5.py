@@ -1,16 +1,17 @@
-# NUCLEO-C5A3ZG only: SPI3 PB3/PB4/PB5 must be unconnected.
+# Leave SPI3 pins unconnected: Nucleo PB3/PB4/PB5 or XIAO D8/D9/D10.
 # Receive data comes from physical MISO pull levels, not an internal loopback.
 import gc
 import sys
 from machine import SPI, Pin, disable_irq, enable_irq
 
-if "NUCLEO_C5A3ZG" not in sys.implementation._machine:
+board = sys.implementation._machine
+if "NUCLEO_C5A3ZG" in board:
+    miso, sck, mosi, miso_af = Pin.cpu.B4, Pin.cpu.B3, Pin.cpu.B5, 6
+elif "XIAO STM32C5" in board:
+    miso, sck, mosi, miso_af = Pin.cpu.B0, Pin.cpu.E2, Pin.cpu.B15, 5
+else:
     print("SKIP")
     raise SystemExit
-
-miso = Pin.cpu.B4
-sck = Pin.cpu.B3
-mosi = Pin.cpu.B5
 spi = SPI(3, baudrate=600000)
 try:
     # Include FIFO-length boundaries and both supported frame widths.
@@ -19,7 +20,7 @@ try:
             for phase in (0, 1):
                 spi.init(bits=bits, polarity=polarity, phase=phase)
                 for pull, expected in ((Pin.PULL_UP, 255), (Pin.PULL_DOWN, 0)):
-                    miso.init(Pin.ALT, pull=pull, alt=6)
+                    miso.init(Pin.ALT, pull=pull, alt=miso_af)
                     for count in lengths:
                         source = bytes((n * 71 + 9) & 255 for n in range(count))
                         dest = bytearray(count)
@@ -30,7 +31,7 @@ try:
 
     # Odd-address word buffers preserve word framing and guards.
     spi.init(bits=16)
-    miso.init(Pin.ALT, pull=Pin.PULL_UP, alt=6)
+    miso.init(Pin.ALT, pull=Pin.PULL_UP, alt=miso_af)
     raw = bytearray(37)
     view = memoryview(raw)[1:35]
     spi.readinto(view)
@@ -50,10 +51,10 @@ try:
     del source, dest, view, raw
     gc.collect()
     data = bytearray(65536)
-    miso.init(Pin.ALT, pull=Pin.PULL_DOWN, alt=6)
+    miso.init(Pin.ALT, pull=Pin.PULL_DOWN, alt=miso_af)
     for bits in (8, 16):
         spi.init(bits=bits)
-        miso.init(Pin.ALT, pull=Pin.PULL_DOWN, alt=6)
+        miso.init(Pin.ALT, pull=Pin.PULL_DOWN, alt=miso_af)
         spi.readinto(data, 0xA5)
         assert not any(data)
     irq = disable_irq()
@@ -65,8 +66,11 @@ try:
     del data
     print("C5 SPI chunking and masked IRQ progress")
     for config in (
-        {"baudrate": 0}, {"polarity": 2}, {"phase": 2},
-        {"bits": 9}, {"firstbit": 2},
+        {"baudrate": 0},
+        {"polarity": 2},
+        {"phase": 2},
+        {"bits": 9},
+        {"firstbit": 2},
     ):
         try:
             spi.init(**config)
@@ -83,7 +87,7 @@ try:
     else:
         raise AssertionError("deinitialized transfer accepted")
     spi.init(bits=8, firstbit=SPI.LSB)
-    miso.init(Pin.ALT, pull=Pin.PULL_UP, alt=6)
+    miso.init(Pin.ALT, pull=Pin.PULL_UP, alt=miso_af)
     assert spi.read(17) == b"\xff" * 17
     print("C5 SPI validation and deinit recovery")
 finally:

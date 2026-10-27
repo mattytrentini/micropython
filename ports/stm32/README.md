@@ -260,6 +260,11 @@ software-managed transfer lengths beyond the hardware counter limit. The XIAO
 SPI3 routes D8/D9/D10 to PE2/PB0/PB15; the Nucleo uses PB3/PB4/PB5. These
 alternate functions were checked against ST DS15137 Table 14. DMA and the
 legacy `pyb.SPI` API remain disabled on C5.
+The SPI hardware regression covers both boards using physical MISO pull levels,
+including FIFO boundaries, 8-/16-bit frames, long transfers and error recovery.
+Leave the expansion SPI pins unconnected when running
+`tests/ports/stm32/spi_c5.py`.
+
 `machine.I2S` supports I2S1 master transmit and receive on the Nucleo board.
 Pass the I2S1 clock, word-select and data pins explicitly; the alternate
 functions are provided for PA4/PA5/PA6/PA7 and PB3/PB4/PB5. PA5 is also the
@@ -279,6 +284,9 @@ frequency remains available when updating `SystemCoreClock`. A clock transition
 is rejected with `OSError(EBUSY)` while a peripheral depending on the changed
 clocks is enabled. Deinitialize those peripherals first; on the Nucleo this
 includes the UART2 REPL.
+The XIAO's default UART1 REPL also blocks clock changes and STOP. When testing
+clock transitions over USB, deinitialize `machine.UART(1)` first and restore
+it at 115200 baud after returning to the board's default 144 MHz clock.
 
 `machine.lightsleep([timeout_ms])` enters STOP0 and restores the prior system
 clock, SysTick and PSI stop-clock setting after wake. RTC wakeup is used for a
