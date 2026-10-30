@@ -1,11 +1,11 @@
-# Leave SPI3 pins unconnected: Nucleo PB3/PB4/PB5 or XIAO D8/D9/D10.
+# Leave SPI3 pins unconnected: Nucleo/WeAct PB3/PB4/PB5 or XIAO D8/D9/D10.
 # Receive data comes from physical MISO pull levels, not an internal loopback.
 import gc
 import sys
 from machine import SPI, Pin, disable_irq, enable_irq
 
 board = sys.implementation._machine
-if "NUCLEO_C5A3ZG" in board:
+if "NUCLEO_C5A3ZG" in board or "WeAct Studio STM32C552" in board:
     miso, sck, mosi, miso_af = Pin.cpu.B4, Pin.cpu.B3, Pin.cpu.B5, 6
 elif "XIAO STM32C5" in board:
     miso, sck, mosi, miso_af = Pin.cpu.B0, Pin.cpu.E2, Pin.cpu.B15, 5
@@ -14,6 +14,9 @@ else:
     raise SystemExit
 spi = SPI(3, baudrate=600000)
 try:
+    # Allocate the boundary buffer before small transfers fragment the C552 heap.
+    gc.collect()
+    data = bytearray(65536)
     # Include FIFO-length boundaries and both supported frame widths.
     for bits, lengths in ((8, (1, 15, 16, 257)), (16, (2, 14, 16, 258))):
         for polarity in (0, 1):
@@ -49,8 +52,6 @@ try:
 
     # Cross the hardware transfer-count limit in each framing mode.
     del source, dest, view, raw
-    gc.collect()
-    data = bytearray(65536)
     miso.init(Pin.ALT, pull=Pin.PULL_DOWN, alt=miso_af)
     for bits in (8, 16):
         spi.init(bits=bits)

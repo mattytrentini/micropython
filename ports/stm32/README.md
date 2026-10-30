@@ -273,8 +273,8 @@ boards. Pass clock, word-select and data pins explicitly; PA4/PA5/PA6/PA7 and
 PB3/PB4/PB5 provide these alternate functions. On the Nucleo, PA5 is also the
 on-board LED. PB3/PB4/PB5 are used by both boards' SPI3 configurations.
 Transfer-rate tests cover 16-/32-bit mono and stereo transmit and receive on
-the Nucleo. External hardware is still required to validate audio sample
-contents; no audio loopback is wired on the board.
+the Nucleo and WeAct. External hardware is still required to validate audio
+sample contents; no audio loopback is wired on either board.
 Low-rate transmit configurations use the internal master-clock divider path
 when PCLK2 exceeds the ordinary divider range. This supports 8 kHz at 144 MHz
 without changing the wire-slot width or configuring an MCK output pin.
@@ -315,7 +315,8 @@ board-defined target pins for transactions.
 On the XIAO, I2C2 is shared with the onboard IMU at address 0x6A; a target on that
 bus must not claim the IMU's address, and controller scans can still see the IMU.
 The C5 target loopback uses I2C2 as controller and I2C1 as target; it requires
-confirmed PB3/PB4-to-PB6/PB7 wiring before running.
+confirmed connections between the board-defined I2C2 and I2C1 SCL/SDA pins
+before running.
 `machine.mem_backup()` exposes the C5 TAMP backup-register bank as 32
 four-byte words. The register bank is not cleared during MicroPython startup;
 it retains values while the RTC backup domain remains powered.

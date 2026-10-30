@@ -13,7 +13,10 @@ MAX_DELTA_MS = 4
 # Configure pins based on the board.
 # Tuples of (i2s_id, sck_pin, ws_pin, sd_tx_pin, sd_rx_pin)
 # A board must have at least one instance to test, both TX and RX mode.
-if "NUCLEO_C5A3ZG" in sys.implementation._machine:
+if (
+    "NUCLEO_C5A3ZG" in sys.implementation._machine
+    or "WeAct Studio STM32C552" in sys.implementation._machine
+):
     i2s_instances = ((1, Pin("A5"), Pin("A4"), Pin("A7"), Pin("A6")),)
 elif "pyboard" in sys.platform:
     i2s_instances = ((2, Pin("Y6"), Pin("Y5"), Pin("Y8"), Pin("Y8")),)

@@ -1,11 +1,11 @@
 # C5 controller errors, lifecycle, and transfers without external wiring.
-# Leave the Nucleo I2C pins unconnected. The XIAO uses its onboard LSM6DS3.
+# Leave the Nucleo/WeAct I2C pins unconnected. The XIAO uses its onboard LSM6DS3.
 import sys
 import time
 from machine import I2C, Pin
 
 board = sys.implementation._machine
-if "NUCLEO_C5A3ZG" in board:
+if "NUCLEO_C5A3ZG" in board or "WeAct Studio STM32C552" in board:
     buses = (1, 2)
     imu_bus = None
 elif "XIAO STM32C5" in board:
@@ -60,7 +60,8 @@ for bus in buses:
 
 if imu_bus is None:
     # Different deadlines check that initializing one controller does not alter another.
-    faults = ((1, Pin.cpu.B6, 4, 5000, 5), (2, Pin.cpu.B3, 9, 30000, 30))
+    scl2, af2 = (Pin.cpu.B10, 4) if "WeAct Studio STM32C552" in board else (Pin.cpu.B3, 9)
+    faults = ((1, Pin.cpu.B6, 4, 5000, 5), (2, scl2, af2, 30000, 30))
     controllers = [I2C(bus, freq=100_000, timeout=timeout) for bus, scl, af, timeout, ms in faults]
     for (bus, scl, af, timeout, timeout_ms), i2c in zip(faults, controllers):
         try:
