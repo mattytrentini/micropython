@@ -316,10 +316,23 @@ four-byte words. The register bank is not cleared during MicroPython startup;
 it retains values while the RTC backup domain remains powered.
 
 The C5 flash backend uses the C5 HAL's polling program-by-address and page-erase
-operations, including bank-swap-aware page selection. It is available to port
-code, but internal flash filesystem storage remains disabled on both C5 boards;
-enabling it requires a separate storage-layout decision.
+operations, including bank-swap-aware page selection. Programming uses the main
+flash-bank geometry and 16-byte-aligned destinations. ICACHE is temporarily
+disabled during flash mutations, invalidated afterward, and restored to its
+previous state to prevent write intrusion and stale flash reads.
 
+The XIAO enables a FAT filesystem at `/flash` using the existing 256 KiB internal
+flash reservation (`0x080c0000` to `0x08100000`) and an 8 KiB page cache. First boot
+creates the filesystem and default startup files using the STM32 factory-reset
+path. Files, imported modules, `boot.py` and `main.py` persist across resets and
+application-only UF2 updates. The factory TinyUF2 bootloader occupies the first
+32 KiB and is outside both the application and filesystem regions. The onboard
+external SPI flash is not used for this filesystem.
+
+USB remains CDC-only; use file operations or `mpremote` to transfer files.
+Close files and call `os.sync()` before hard reset or removing power. This uses
+the existing cached STM32 FAT backend, not a power-fail-safe flash filesystem.
+Internal flash filesystem storage remains disabled on the Nucleo.
 
 `machine.time_pulse_us()` uses the microsecond tick clock; timeouts are returned
 as negative values as in the common machine API. `machine.bitstream()` uses the

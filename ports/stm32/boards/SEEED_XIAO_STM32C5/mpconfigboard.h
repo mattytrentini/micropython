@@ -4,8 +4,8 @@
 #define MICROPY_PY_PYB_LEGACY               (0)
 #define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
 #define MICROPY_PY_MACHINE_BOOTLOADER       (1)
-#define MICROPY_HW_HAS_FLASH                (0)
-#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
+#define MICROPY_HW_HAS_FLASH                (1)
+#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
 #define MICROPY_HW_HAS_SWITCH               (0)
 #define MICROPY_HW_ENABLE_RTC               (1)
 // Seeed's board schematic includes a 32.768 kHz RTC crystal.

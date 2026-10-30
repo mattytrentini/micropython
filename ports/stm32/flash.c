@@ -32,6 +32,8 @@
 #include "flash.h"
 
 #if defined(STM32C5)
+#include "stm32c5xx_ll_icache.h"
+
 static hal_flash_handle_t c5_flash_handle;
 static bool c5_flash_initialized;
 
@@ -44,6 +46,31 @@ static hal_status_t c5_flash_init(void) {
         return status;
     }
     return HAL_OK;
+}
+
+static bool c5_flash_cache_disable(void) {
+    // Programming through the read-only ICACHE raises a write-intrusion error.
+    bool enabled = LL_ICACHE_IsEnabled(ICACHE);
+    LL_ICACHE_Disable(ICACHE);
+    __DSB();
+    __ISB();
+    while (LL_ICACHE_IsActiveFlag_BUSY(ICACHE)) {
+    }
+    return enabled;
+}
+
+static void c5_flash_cache_restore(bool enabled) {
+    // Invalidate even a disabled cache so a later enable cannot expose old data.
+    LL_ICACHE_ClearFlag_BSYEND(ICACHE);
+    LL_ICACHE_Invalidate(ICACHE);
+    while (!LL_ICACHE_IsActiveFlag_BSYEND(ICACHE)) {
+    }
+    LL_ICACHE_ClearFlag_BSYEND(ICACHE);
+    if (enabled) {
+        LL_ICACHE_Enable(ICACHE);
+    }
+    __DSB();
+    __ISB();
 }
 #endif
 #if !defined(STM32N6)
@@ -358,7 +385,9 @@ int flash_erase(uint32_t flash_dest) {
         status = HAL_FLASH_ITF_Unlock(HAL_FLASH);
     }
     if (status == HAL_OK) {
+        bool cache_enabled = c5_flash_cache_disable();
         status = HAL_FLASH_ErasePage(&c5_flash_handle, get_bank(flash_dest), get_page(flash_dest), 1, HAL_MAX_DELAY);
+        c5_flash_cache_restore(cache_enabled);
     }
     if (HAL_FLASH_ITF_IsLocked(HAL_FLASH) == HAL_FLASH_ITF_UNLOCKED) {
         HAL_FLASH_ITF_Lock(HAL_FLASH);
@@ -372,7 +401,7 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
     }
     if (src == NULL || num_word32 > UINT32_MAX / sizeof(uint32_t)
         || ((uintptr_t)src & (sizeof(uint32_t) - 1)) != 0
-        || (flash_dest & (sizeof(uint32_t) - 1)) != 0
+        || (flash_dest & 15) != 0
         || flash_dest < FLASH_LAYOUT_START_ADDR) {
         return -MP_EINVAL;
     }
@@ -387,7 +416,7 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
     }
     uint32_t bank_size = 0;
     if (status == HAL_OK) {
-        bank_size = HAL_FLASH_GetBankSizeByte(&c5_flash_handle, HAL_FLASH_BANK_1);
+        bank_size = HAL_FLASH_GetUserFlashSizeByte(&c5_flash_handle, HAL_FLASH_BANK_1);
         if (bank_size == 0) {
             status = HAL_ERROR;
         }
@@ -398,7 +427,9 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
         if (chunk_size > size) {
             chunk_size = size;
         }
+        bool cache_enabled = c5_flash_cache_disable();
         status = HAL_FLASH_ProgramByAddrAdapt(&c5_flash_handle, flash_dest, src, chunk_size, HAL_MAX_DELAY);
+        c5_flash_cache_restore(cache_enabled);
         flash_dest += chunk_size;
         src += chunk_size / sizeof(uint32_t);
         size -= chunk_size;
