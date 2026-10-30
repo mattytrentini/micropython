@@ -208,6 +208,9 @@ On `NUCLEO_C5A3ZG`, the ST-LINK virtual COM port provides the UART REPL
 (USART2 on PA2/PA3, 115200 baud). The User USB connector provides a separate
 USB CDC REPL. On `SEEED_XIAO_STM32C5`, use the USB CDC port after flashing;
 `XIAOC5BOOT` is the bootloader drive, not the running MicroPython console.
+On `WEACTSTUDIO_STM32C552`, use native USB CDC or USART1 on the P5 TX/RX header
+(PA9/PA10, 115200 baud). This board uses the STM32 ROM DFU bootloader, not UF2;
+see its [deployment instructions](boards/WEACTSTUDIO_STM32C552/deploy.md).
 
 STM32C5 peripherals
 -------------------
@@ -223,8 +226,8 @@ External GPIO interrupts are available through `machine.Pin.irq()` and
 Only one GPIO port can own each numbered EXTI line at a time. Other non-GPIO
 sources are not exposed through `pyb.ExtInt`.
 
-`pyb.RTC` exposes calendar initialization and `datetime()` read/write on both
-C5 boards. The XIAO and Nucleo board hardware provide a 32.768 kHz LSE crystal.
+`pyb.RTC` exposes calendar initialization and `datetime()` read/write on the
+C5 boards. The XIAO, Nucleo and WeAct hardware provide a 32.768 kHz LSE crystal.
 When RTCSEL is unset, startup uses the board-configured oscillator drive and
 selects the board-configured source with the one-time initial selector write.
 The C5 LSE drive matches Zephyr's `clk_lse` default (`driving-capability = <2>`)
@@ -265,10 +268,10 @@ including FIFO boundaries, 8-/16-bit frames, long transfers and error recovery.
 Leave the expansion SPI pins unconnected when running
 `tests/ports/stm32/spi_c5.py`.
 
-`machine.I2S` supports I2S1 master transmit and receive on the Nucleo board.
-Pass the I2S1 clock, word-select and data pins explicitly; the alternate
-functions are provided for PA4/PA5/PA6/PA7 and PB3/PB4/PB5. PA5 is also the
-on-board LED, and PB3/PB4/PB5 are used by the board's SPI3 configuration.
+`machine.I2S` supports I2S1 master transmit and receive on the Nucleo and WeAct
+boards. Pass clock, word-select and data pins explicitly; PA4/PA5/PA6/PA7 and
+PB3/PB4/PB5 provide these alternate functions. On the Nucleo, PA5 is also the
+on-board LED. PB3/PB4/PB5 are used by both boards' SPI3 configurations.
 Transfer-rate tests cover 16-/32-bit mono and stereo transmit and receive on
 the Nucleo. External hardware is still required to validate audio sample
 contents; no audio loopback is wired on the board.
@@ -276,16 +279,17 @@ Low-rate transmit configurations use the internal master-clock divider path
 when PCLK2 exceeds the ordinary divider range. This supports 8 kHz at 144 MHz
 without changing the wire-slot width or configuring an MCK output pin.
 
-On both C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB
-clocks. It supports 48 MHz HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers;
-the PSI output and PSIDIV3 USB clock remain unchanged. The CMSIS system-clock
-source is compiled with the board HAL oscillator configuration so its HSE
+On C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB clocks.
+It supports direct HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers. HSE is
+48 MHz on the Nucleo/XIAO and 8 MHz on the WeAct. The PSI output and PSIDIV3 USB
+clock remain unchanged. The CMSIS system-clock source is compiled with the
+board HAL oscillator configuration so its HSE
 frequency remains available when updating `SystemCoreClock`. A clock transition
 is rejected with `OSError(EBUSY)` while a peripheral depending on the changed
 clocks is enabled. Deinitialize those peripherals first; on the Nucleo this
 includes the UART2 REPL.
-The XIAO's default UART1 REPL also blocks clock changes and STOP. When testing
-clock transitions over USB, deinitialize `machine.UART(1)` first and restore
+The XIAO and WeAct default UART1 REPLs also block clock changes and STOP. When
+testing clock transitions over USB, deinitialize `machine.UART(1)` first and restore
 it at 115200 baud after returning to the board's default 144 MHz clock.
 
 `machine.lightsleep([timeout_ms])` enters STOP0 and restores the prior system
@@ -302,7 +306,8 @@ PSIDIV3 enable used by USB. RTC-timed STOP and USB re-enumeration have been
 checked on the Nucleo at both supported system-clock frequencies.
 
 `machine.I2C` provides polling controller transfers on I2C1 and I2C2. The boards
-use PB6/PB7 for I2C1; I2C2 uses PB3/PB4 and connects to the XIAO's onboard IMU.
+use PB6/PB7 for I2C1. I2C2 uses PB3/PB4 on Nucleo/XIAO and connects to the
+XIAO's onboard IMU; the WeAct uses PB10/PB12.
 `machine.I2CTarget` is available on these hardware buses, with 7-bit and 10-bit
 addresses, backing memory and IRQ callbacks. Target mode handles repeated STARTs
 as a new transfer without reporting a STOP; connect a separate controller to the
@@ -320,6 +325,9 @@ operations, including bank-swap-aware page selection. Programming uses the main
 flash-bank geometry and 16-byte-aligned destinations. ICACHE is temporarily
 disabled during flash mutations, invalidated afterward, and restored to its
 previous state to prevent write intrusion and stale flash reads.
+Flash programming delay is explicitly set for 144 MHz during startup rather
+than inherited from a bootloader. Clock transitions select delay 0 at the
+lower HSE frequency and delay 2 at 144 MHz, in clock-safe order.
 
 The XIAO enables a FAT filesystem at `/flash` using the existing 256 KiB internal
 flash reservation (`0x080c0000` to `0x08100000`) and an 8 KiB page cache. First boot
@@ -328,6 +336,9 @@ path. Files, imported modules, `boot.py` and `main.py` persist across resets and
 application-only UF2 updates. The factory TinyUF2 bootloader occupies the first
 32 KiB and is outside both the application and filesystem regions. The onboard
 external SPI flash is not used for this filesystem.
+The WeAct reserves 128 KiB at `0x08060000` to `0x08080000` for its FAT filesystem,
+with an 8 KiB page cache. Firmware starts at `0x08000000` and is limited to the
+preceding 384 KiB; application-only updates must leave the filesystem untouched.
 
 USB remains CDC-only; use file operations or `mpremote` to transfer files.
 Close files and call `os.sync()` before hard reset or removing power. This uses
@@ -341,7 +352,7 @@ the counter enable, recovering bootloader/debugger states that otherwise leave
 the counter stopped. C5 microsecond delays also use this counter while IRQs
 are disabled, rather than relying on an empty C delay loop.
 
-Both C5 board definitions freeze `neopixel.NeoPixel`. Automated pulse tests use
+The C5 board definitions freeze `neopixel.NeoPixel`. Automated pulse tests use
 a timer-generated input signal; actual NeoPixel waveform and LED behaviour
 still require external measurement/hardware.
 
@@ -357,7 +368,8 @@ PB13 (TX)/PB5 (RX), connected to the onboard transceiver. XIAO PB14 is held
 high in standby and driven low after successful CAN initialization; deinit
 restores standby. External-bus operation requires appropriate wiring, common
 ground and termination; internal silent loopback does not validate these.
+The WeAct uses FDCAN1 on PD1 (TX)/PD0 (RX), with an external transceiver required.
 
-CAN uses the independent 48 MHz HSE kernel clock. Deinitialize CAN before
+CAN uses the board's independent HSE kernel clock. Deinitialize CAN before
 changing the system clock or entering STOP. As with the existing STM32 CAN
 backend, `MODE_SLEEP` selects bus monitoring, not hardware low-power sleep.

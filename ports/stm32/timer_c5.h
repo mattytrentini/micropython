@@ -14,12 +14,16 @@ static void timer_c5_clock_enable(uint id, bool reset) {
         case 2:
             clock = LL_APB1_GRP1_PERIPH_TIM2;
             break;
+        #if defined(TIM3)
         case 3:
             clock = LL_APB1_GRP1_PERIPH_TIM3;
             break;
+        #endif
+        #if defined(TIM4)
         case 4:
             clock = LL_APB1_GRP1_PERIPH_TIM4;
             break;
+        #endif
         case 5:
             clock = LL_APB1_GRP1_PERIPH_TIM5;
             break;

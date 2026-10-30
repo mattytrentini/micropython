@@ -231,6 +231,9 @@ void SystemClock_Config(void) {
     }
 
     #if MICROPY_HW_CLK_USE_HSE
+    // Flash programming at 144 MHz requires delay 2, even without a bootloader.
+    LL_FLASH_SetProgrammingDelay(FLASH, LL_FLASH_PROGRAM_DELAY_2);
+
     // Switch system clock to PSIS.
     LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PSIS);
     while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PSIS) {

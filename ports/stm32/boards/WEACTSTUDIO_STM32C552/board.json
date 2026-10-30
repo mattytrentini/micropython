@@ -1,0 +1,17 @@
+{
+    "deploy": [
+        "deploy.md"
+    ],
+    "docs": "https://github.com/WeActStudio/WeActStudio.STM32C5_100Pin_CoreBoard/blob/master/Hardware/WeAct-STM32C5xxVxTxCoreBoard_V10%20SchDoc.pdf",
+    "features": [
+        "CAN",
+        "USB-C"
+    ],
+    "images": [
+        "weact_stm32c552.jpg"
+    ],
+    "mcu": "stm32c5",
+    "product": "STM32C5 100-pin CoreBoard",
+    "url": "https://github.com/WeActStudio/WeActStudio.STM32C5_100Pin_CoreBoard",
+    "vendor": "WeAct Studio"
+}

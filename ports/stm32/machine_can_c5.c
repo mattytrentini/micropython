@@ -52,8 +52,8 @@ static hal_fdcan_t machine_can_c5_instance(void) {
 
 static int machine_can_port_f_clock(const machine_can_obj_t *self) {
     (void)self;
-    // Both supported C5 boards run a 48 MHz HSE. Selecting it directly avoids
-    // deriving CAN timing from the mutable SYSCLK/APB prescalers.
+    // Select the board's HSE directly so CAN timing is independent of the
+    // mutable SYSCLK/APB prescalers.
     if (!machine_can_c5_clock_set) {
         if (HAL_RCC_FDCAN_SetKernelClkSource(HAL_RCC_FDCAN_CLK_SRC_HSE) != HAL_OK) {
             mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("FDCAN clock selection failed"));

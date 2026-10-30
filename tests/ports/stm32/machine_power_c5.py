@@ -8,30 +8,33 @@ if "STM32C5" not in sys.implementation._machine:
     print("SKIP")
     raise SystemExit
 
+hse = 8000000 if "WeAct Studio STM32C552" in sys.implementation._machine else 48000000
 freq = machine.freq()
 assert freq in (
-    (48000000, 48000000, 48000000, 48000000),
+    (hse, hse, hse, hse),
     (144000000, 144000000, 144000000, 144000000),
 ), freq
 
 # Clock changes preserve the independent PSI/PSIDIV3 USB clock. Active
 # peripherals may reject the transition; in that case no clock may change.
 try:
-    machine.freq(48000000)
+    machine.freq(hse)
 except OSError as exc:
     assert exc.errno == errno.EBUSY, exc
     assert machine.freq() == freq
 else:
-    assert machine.freq() == (48000000, 48000000, 48000000, 48000000)
+    assert machine.freq() == (hse, hse, hse, hse)
     machine.freq(144000000)
     assert machine.freq() == (144000000, 144000000, 144000000, 144000000)
 
-try:
-    machine.freq(100000000)
-except ValueError:
-    pass
-else:
-    raise AssertionError("unsupported clock must be rejected")
+unsupported = (100000000, 48000000) if hse == 8000000 else (100000000,)
+for clock in unsupported:
+    try:
+        machine.freq(clock)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unsupported clock must be rejected")
 
 # An active USB host that has not suspended the bus cannot safely enter STOP.
 # Otherwise the RTC wake timer must return to the running clock domain.

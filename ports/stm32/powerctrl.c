@@ -202,7 +202,7 @@ static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
 
 int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t apb2) {
     uint32_t source;
-    if (sysclk == 48000000U && ahb == sysclk && apb1 == sysclk && apb2 == sysclk) {
+    if (sysclk == HSE_VALUE && ahb == sysclk && apb1 == sysclk && apb2 == sysclk) {
         source = LL_RCC_SYS_CLKSOURCE_HSE;
     } else if (sysclk == 144000000U && ahb == sysclk && apb1 == sysclk && apb2 == sysclk) {
         source = LL_RCC_SYS_CLKSOURCE_PSIS;
@@ -226,17 +226,24 @@ int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t 
         return -MP_EIO;
     }
     // Keep the board-qualified PSIS wait-state setting in both directions.
-    // This is safe at 48 MHz and avoids reducing latency during a transition.
+    // This is safe at the lower HSE rate and avoids changing latency mid-transition.
     LL_FLASH_SetLatency(FLASH, MICROPY_HW_FLASH_LATENCY);
     while (LL_FLASH_GetLatency(FLASH) != MICROPY_HW_FLASH_LATENCY) {
     }
 
     bool tick_enabled = (SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) != 0;
     uint32_t irq_state = disable_irq();
+    // Raise programming delay before accelerating; lower it only after slowing.
+    if (source == LL_RCC_SYS_CLKSOURCE_PSIS) {
+        LL_FLASH_SetProgrammingDelay(FLASH, LL_FLASH_PROGRAM_DELAY_2);
+    }
     LL_RCC_SetSysClkSource(source);
     uint32_t expected = source == LL_RCC_SYS_CLKSOURCE_HSE
         ? LL_RCC_SYS_CLKSOURCE_STATUS_HSE : LL_RCC_SYS_CLKSOURCE_STATUS_PSIS;
     while (LL_RCC_GetSysClkSource() != expected) {
+    }
+    if (source == LL_RCC_SYS_CLKSOURCE_HSE) {
+        LL_FLASH_SetProgrammingDelay(FLASH, LL_FLASH_PROGRAM_DELAY_0);
     }
     SystemCoreClockUpdate();
     powerctrl_config_systick();
