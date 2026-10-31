@@ -281,10 +281,12 @@ without changing the wire-slot width or configuring an MCK output pin.
 
 On C5 boards, `machine.freq()` reports the active SYSCLK, HCLK and APB clocks.
 It supports direct HSE and 144 MHz PSIS SYSCLK with 1:1 bus dividers. HSE is
-48 MHz on the Nucleo/XIAO and 8 MHz on the WeAct. The PSI output and PSIDIV3 USB
-clock remain unchanged. The CMSIS system-clock source is compiled with the
-board HAL oscillator configuration so its HSE
-frequency remains available when updating `SystemCoreClock`. A clock transition
+48 MHz on the Nucleo/XIAO and 8 MHz on the WeAct. USB-enabled builds reject
+APB clocks below the TinyUSB FSDEV driver's 10 MHz minimum, so the WeAct's
+USB firmware supports only the 144 MHz operating point. PSI and its PSIDIV3
+USB clock remain unchanged. The CMSIS system-clock source is compiled with
+the board HAL oscillator configuration so its HSE frequency remains available
+when updating `SystemCoreClock`. A clock transition
 is rejected with `OSError(EBUSY)` while a peripheral depending on the changed
 clocks is enabled. Deinitialize those peripherals first; on the Nucleo this
 includes the UART2 REPL.

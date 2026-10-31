@@ -55,9 +55,10 @@ Default bus assignments (external devices are not fitted):
 
 I2C2 SDA and SPI2 NSS share PB12. SPI1 and the listed I2S1 option share pins.
 USART1's diagnostic REPL must be deinitialized before using PA9/PA10 for other
-purposes or changing `machine.freq()`. The supported SYSCLK frequencies are
-8 MHz HSE and 144 MHz PSIS, with 1:1 bus dividers. ADC and DAC remain disabled,
-as on the other C5 boards.
+purposes. This USB-enabled build supports 144 MHz PSIS SYSCLK with 1:1 bus
+dividers. Switching to the 8 MHz HSE is rejected: TinyUSB's FSDEV driver requires
+an APB clock of at least 10 MHz. ADC and DAC remain disabled, as on the other
+C5 boards.
 
 Pin alternate functions are from ST DS14928 Rev 1, Table 13; ADC channel
 metadata is from Table 12. Board wiring is documented in the

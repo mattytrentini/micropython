@@ -8,33 +8,44 @@ if "STM32C5" not in sys.implementation._machine:
     print("SKIP")
     raise SystemExit
 
-hse = 8000000 if "WeAct Studio STM32C552" in sys.implementation._machine else 48000000
+weact = "WeAct Studio STM32C552" in sys.implementation._machine
+# The 8 MHz HSE is below the USB FSDEV driver's APB clock minimum.
+low_clock = 144000000 if weact else 48000000
 freq = machine.freq()
 assert freq in (
-    (hse, hse, hse, hse),
+    (low_clock,) * 4,
     (144000000, 144000000, 144000000, 144000000),
 ), freq
 
 # Clock changes preserve the independent PSI/PSIDIV3 USB clock. Active
 # peripherals may reject the transition; in that case no clock may change.
 try:
-    machine.freq(hse)
+    machine.freq(low_clock)
 except OSError as exc:
     assert exc.errno == errno.EBUSY, exc
     assert machine.freq() == freq
 else:
-    assert machine.freq() == (hse, hse, hse, hse)
+    assert machine.freq() == (low_clock,) * 4
     machine.freq(144000000)
     assert machine.freq() == (144000000, 144000000, 144000000, 144000000)
 
-unsupported = (100000000, 48000000) if hse == 8000000 else (100000000,)
-for clock in unsupported:
-    try:
-        machine.freq(clock)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("unsupported clock must be rejected")
+unsupported = (100000000, 48000000, 8000000) if weact else (100000000,)
+before_unsupported = machine.freq()
+if weact:
+    # Reject 8 MHz even without the diagnostic UART's independent busy guard.
+    machine.UART(1).deinit()
+try:
+    for clock in unsupported:
+        try:
+            machine.freq(clock)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unsupported clock must be rejected")
+        assert machine.freq() == before_unsupported
+finally:
+    if weact:
+        machine.UART(1, 115200)
 
 # An active USB host that has not suspended the bus cannot safely enter STOP.
 # Otherwise the RTC wake timer must return to the running clock domain.

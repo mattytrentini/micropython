@@ -209,6 +209,13 @@ int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t 
     } else {
         return -MP_EINVAL;
     }
+    #if MICROPY_HW_USB_FS && MICROPY_HW_TINYUSB_STACK
+    // TinyUSB's FSDEV driver requires an APB clock of at least 10 MHz.
+    // Keep this invariant even while the runtime USB device is disconnected.
+    if (apb2 < 10000000U) {
+        return -MP_EINVAL;
+    }
+    #endif
 
     uint32_t current = HAL_RCC_GetSYSCLKFreq();
     if (current == sysclk) {
