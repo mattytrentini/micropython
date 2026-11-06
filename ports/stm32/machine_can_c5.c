@@ -294,15 +294,6 @@ static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, con
         return -1;
     }
     struct machine_can_port *port = self->port;
-    for (size_t i = 0; i < CAN_TX_QUEUE_LEN; ++i) {
-        if (port->tx_id[i] == id && !(flags & CAN_MSG_FLAG_UNORDERED)) {
-            return -1;
-        }
-    }
-    // Free-level reporting is FIFO-only; this controller uses priority queue mode.
-    if (HAL_FDCAN_GetTxFifoStatus(&port->h) == HAL_FDCAN_FIFO_STATUS_FULL) {
-        return -1;
-    }
     hal_fdcan_tx_header_t header = { .b = {
                                          .identifier = id,
                                          .frame_type = (flags & CAN_MSG_FLAG_RTR) ? HAL_FDCAN_FRAME_REMOTE : HAL_FDCAN_FRAME_DATA,
@@ -314,19 +305,25 @@ static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, con
                                          .event_fifo_control = HAL_FDCAN_TX_EVENTS_FIFO_DISCARD,
                                      } };
     mp_uint_t irq_state = MICROPY_BEGIN_ATOMIC_SECTION();
-    // Do not let the hardware reuse a completed slot before its completion index is consumed.
-    if (port->tx_done != 0) {
+    for (size_t i = 0; i < CAN_TX_QUEUE_LEN; ++i) {
+        if (port->tx_id[i] == id && !(flags & CAN_MSG_FLAG_UNORDERED)) {
+            MICROPY_END_ATOMIC_SECTION(irq_state);
+            return -1;
+        }
+    }
+    // Hardware can free a slot before its IRQ runs. Reserve by software ownership,
+    // not the hardware put index, until that slot's completion has been consumed.
+    uint32_t free_mask = ((1U << CAN_TX_QUEUE_LEN) - 1) & ~(port->tx_inflight | port->tx_done);
+    if (free_mask == 0) {
         MICROPY_END_ATOMIC_SECTION(irq_state);
         return -1;
     }
-    if (HAL_FDCAN_ReqTransmitMsgFromFIFOQ(&port->h, &header, (const uint8_t *)data) != HAL_OK) {
+    uint32_t idx = __builtin_ctz(free_mask);
+    uint32_t tx_buffer_mask = 1U << idx;
+    if (HAL_FDCAN_ReqTransmitMsgFromBuffer(&port->h, &header, (const uint8_t *)data, tx_buffer_mask) != HAL_OK) {
         MICROPY_END_ATOMIC_SECTION(irq_state);
         return -1;
     }
-    uint32_t tx_buffer_mask = HAL_FDCAN_GetLatestTxFifoQRequestBuffer(&port->h);
-    assert(tx_buffer_mask != 0);
-    uint32_t idx = __builtin_ctz(tx_buffer_mask);
-    assert(idx < CAN_TX_QUEUE_LEN);
     port->tx_id[idx] = id;
     port->tx_inflight |= tx_buffer_mask;
     MICROPY_END_ATOMIC_SECTION(irq_state);

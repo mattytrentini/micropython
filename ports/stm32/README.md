@@ -370,6 +370,9 @@ callbacks for frames that were not retained.
 The hardware REC field is seven bits. While the separate receive-passive flag
 is set, `get_counters()` reports REC as 128 (a lower bound), rather than
 incorrectly reporting a value below the error-passive threshold.
+TX queue slots remain reserved until their indexed completion notification
+has been consumed. A slot becoming free in hardware alone does not permit
+its reuse while the previous completion interrupt is pending.
 
 `CAN(1, 500_000)` selects FDCAN1 on PB9 (TX)/PB8 (RX) on the Nucleo, which
 requires an external transceiver. On the XIAO, logical bus 1 selects FDCAN2 on
