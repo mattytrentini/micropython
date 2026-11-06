@@ -1,0 +1,7 @@
+--- instance0 ---
+no-ACK requests remain pending
+indexed cancellations and slot reuse
+normal-mode completions
+no duplicate completions
+--- instance1 ---
+peer acknowledged pending queue

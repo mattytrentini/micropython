@@ -373,6 +373,12 @@ incorrectly reporting a value below the error-passive threshold.
 TX queue slots remain reserved until their indexed completion notification
 has been consumed. A slot becoming free in hardware alone does not permit
 its reuse while the previous completion interrupt is pending.
+The controlled two-node cancellation test keeps the peer silent until every
+slot has been cancelled and reused, then restores ACKs and checks all indexed
+completions. It does not require a babbler to saturate the bus.
+Unpaced duplex traffic at 1 Mbit/s has produced an RX FIFO overrun with Python
+hard callbacks. Check receive error flags and overrun counters; functional
+support for this bitrate is not a guarantee of lossless Python-level throughput.
 
 `CAN(1, 500_000)` selects FDCAN1 on PB9 (TX)/PB8 (RX) on the Nucleo, which
 requires an external transceiver. On the XIAO, logical bus 1 selects FDCAN2 on
