@@ -435,7 +435,9 @@ static void machine_can_port_update_counters(machine_can_obj_t *self) {
     hal_fdcan_error_counters_t hw;
     if (HAL_FDCAN_GetErrorCounters(&port->h, &hw) == HAL_OK) {
         counters->tec = hw.tx_error_cnt;
-        counters->rec = hw.rx_error_cnt;
+        // REC has only seven count bits; RP signals the otherwise hidden >=128 state.
+        counters->rec = hw.rx_error_passive_status == HAL_FDCAN_RX_ERROR_PASSIVE_REACH_LEVEL
+            ? 128 : hw.rx_error_cnt;
     }
     counters->tx_pending = __builtin_popcount(port->regs->TXBRP & 0x7);
     uint32_t f0 = 0, f1 = 0;

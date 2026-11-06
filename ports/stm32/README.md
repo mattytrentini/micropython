@@ -367,6 +367,9 @@ soft/hard callbacks and transmit cancellation are supported.
 RX callbacks report newly stored frames. FIFO-full and lost-frame events latch
 the receive error flags returned by `recv()`; they do not request extra RX
 callbacks for frames that were not retained.
+The hardware REC field is seven bits. While the separate receive-passive flag
+is set, `get_counters()` reports REC as 128 (a lower bound), rather than
+incorrectly reporting a value below the error-passive threshold.
 
 `CAN(1, 500_000)` selects FDCAN1 on PB9 (TX)/PB8 (RX) on the Nucleo, which
 requires an external transceiver. On the XIAO, logical bus 1 selects FDCAN2 on
