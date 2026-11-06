@@ -48,6 +48,8 @@
 #define HAL_FDCAN_MODULE_ENABLED
 // CubeMX2 HAL module enable
 #define USE_HAL_FDCAN_MODULE       1
+// This also enables acknowledgement and dispatch of FDCAN error interrupts.
+#define USE_HAL_FDCAN_GET_LAST_ERRORS 1U
 
 // CubeMX2 HAL module enables (for stm32_hal.h conditional includes)
 #define USE_HAL_RCC_MODULE          1

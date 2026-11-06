@@ -364,6 +364,9 @@ backend uses the C5 FDCAN peripheral in Classical CAN mode, with a maximum
 payload of eight bytes; CAN-FD and bit-rate switching are not enabled.
 Standard/extended identifiers, RTR frames, acceptance filters, polling,
 soft/hard callbacks and transmit cancellation are supported.
+RX callbacks report newly stored frames. FIFO-full and lost-frame events latch
+the receive error flags returned by `recv()`; they do not request extra RX
+callbacks for frames that were not retained.
 
 `CAN(1, 500_000)` selects FDCAN1 on PB9 (TX)/PB8 (RX) on the Nucleo, which
 requires an external transceiver. On the XIAO, logical bus 1 selects FDCAN2 on

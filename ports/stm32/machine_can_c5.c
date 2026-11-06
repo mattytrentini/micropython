@@ -227,7 +227,8 @@ static void machine_can_port_init(machine_can_obj_t *self) {
     }
     machine_can_port_clear_filters(self);
     if (HAL_FDCAN_SetInterruptGroupsToLine(&port->h,
-        HAL_FDCAN_IT_GROUP_RX_FIFO_0 | HAL_FDCAN_IT_GROUP_STATUS_MSG | HAL_FDCAN_IT_GROUP_PROTOCOL_ERROR,
+        HAL_FDCAN_IT_GROUP_RX_FIFO_0 | HAL_FDCAN_IT_GROUP_STATUS_MSG
+        | HAL_FDCAN_IT_GROUP_PROTOCOL_ERROR | HAL_FDCAN_IT_GROUP_BIT_LINE_ERROR,
         HAL_FDCAN_IT_LINE_0) != HAL_OK
         || HAL_FDCAN_SetInterruptGroupsToLine(&port->h, HAL_FDCAN_IT_GROUP_RX_FIFO_1, HAL_FDCAN_IT_LINE_1) != HAL_OK) {
         goto fail;
@@ -472,7 +473,9 @@ static void machine_can_c5_notify_rx(hal_fdcan_handle_t *hfdcan, uint32_t interr
         self->rx_error_flags |= CAN_RECV_ERR_OVERRUN;
         self->counters.rx_overruns++;
     }
-    if ((self->mp_irq_trigger & MP_CAN_IRQ_RX) && self->mp_irq_obj != NULL) {
+    // Full/lost events report receive errors, not additional retained frames.
+    if ((interrupt_flags & (HAL_FDCAN_FLAG_RX_FIFO_0_NEW_MSG | HAL_FDCAN_FLAG_RX_FIFO_1_NEW_MSG))
+        && (self->mp_irq_trigger & MP_CAN_IRQ_RX) && self->mp_irq_obj != NULL) {
         mp_irq_handler(self->mp_irq_obj);
     }
 }
