@@ -253,9 +253,21 @@ wake must not replace that calendar with the startup default.
 
 `pyb.Timer` supports counter/update callbacks, PWM and output compare,
 input capture, encoder modes, and advanced complementary outputs/deadtime.
-Callbacks may be hard or scheduled. TIM2/3/4/5 have 32-bit counters;
-TIM6/7 support basic counter/update operation only. C5 timer source clocks
-use HCLK. This does not enable the separate `machine.PWM` API.
+Callbacks may be hard or scheduled. TIM2/3/4/5 have 32-bit counters where
+present; TIM6/7 support basic counter/update operation only. C5 timer source
+clocks use HCLK.
+
+`machine.PWM` uses the shared STM32 driver for main timer-channel outputs,
+with `freq`, `duty_u16`, `duty_ns`, and `invert` support. Channels on the same
+timer share a frequency: changes preserve configured duty ratios or pulse
+widths, but do not restart explicitly deinitialized siblings. An explicit
+`init`, frequency or duty update can restart a deinitialized output.
+Complementary outputs remain available through `pyb.Timer`, not `machine.PWM`.
+Do not mix the two APIs on the same timer. Stop PWM before changing the
+system clock or entering STOP; the existing active-timer guards apply.
+`tests/ports/stm32/pwm_c5.py` measures physical output pads without jumpers.
+Leave PA0, PA1 and PA10 unconnected and run over USB; the test temporarily
+deinitializes UART1 where PA10 is its RX pin and restores it afterward.
 
 `machine.SPI` provides polling master transfers on configured board buses.
 The current backend supports 8- and 16-bit frames, all CPOL/CPHA modes, and

@@ -1,0 +1,9 @@
+C5 PWM u16 endpoints OK
+C5 PWM nanoseconds and inversion OK
+C5 PWM shared frequency preserves duties OK
+C5 PWM rejected requests preserve outputs OK
+C5 PWM channel deinit and recreation OK
+C5 PWM constructor readback matches output OK
+C5 PWM 32-bit low frequency OK
+C5 PWM pending duties and cached restarts OK
+C5 PWM advanced timer OK
