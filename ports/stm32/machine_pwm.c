@@ -155,12 +155,6 @@ static void pwm_init(pwm_t *pwm) {
         tim->CCMR2 = (tim->CCMR2 & ~(0xff << shift)) | reg << shift;
     }
 
-    #if defined(IS_TIM_BREAK_INSTANCE)
-    // Enable master output if needed.
-    if (IS_TIM_BREAK_INSTANCE(tim)) {
-        tim->BDTR |= TIM_BDTR_MOE;
-    }
-    #endif
 }
 
 static void pwm_set_polarity(pwm_t *pwm, unsigned int polarity) {
@@ -186,9 +180,16 @@ static void pwm_deinit(pwm_t *pwm) {
     tim->CCER &= ~(TIM_CCER_CC1E << (4 * pwm->channel));
 
     // Disable the TIM peripheral if all channels are disabled.
+    #if defined(STM32C5)
+    // CubeMX2 does not provide the legacy HAL's aggregate CCER masks.
+    uint32_t ccer_out_mask = TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E
+        | TIM_CCER_CC5E | TIM_CCER_CC6E | TIM_CCER_CC7E
+        | TIM_CCER_CC1NE | TIM_CCER_CC2NE | TIM_CCER_CC3NE | TIM_CCER_CC4NE;
+    #else
     uint32_t ccer_out_mask = TIM_CCER_CCxE_MASK;
     #if defined(TIM_CCER_CCxNE_MASK)
     ccer_out_mask |= TIM_CCER_CCxNE_MASK;
+    #endif
     #endif
     if ((tim->CCER & ccer_out_mask) == 0) {
         #if defined(IS_TIM_BREAK_INSTANCE)
@@ -218,6 +219,13 @@ static void pwm_start(pwm_t *pwm) {
         // Enable the timer if it's not already running.
         tim->CR1 |= TIM_CR1_CEN;
     }
+
+    #if defined(IS_TIM_BREAK_INSTANCE)
+    // Deinit clears MOE, so restore it whenever an advanced output is started.
+    if (IS_TIM_BREAK_INSTANCE(tim)) {
+        tim->BDTR |= TIM_BDTR_MOE;
+    }
+    #endif
 
     // Enable output on pin.
     unsigned int shift = 4 * pwm->channel;
@@ -372,6 +380,7 @@ typedef struct _machine_pwm_obj_t {
 
 typedef struct _machine_pwm_state_t {
     uint8_t duty_type;
+    bool deinitialized;
     mp_int_t duty;
 } machine_pwm_state_t;
 
@@ -539,9 +548,15 @@ static void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
     if (args[ARG_duty_ns].u_int != -1) {
         mp_machine_pwm_duty_set_ns(self, args[ARG_duty_ns].u_int);
     }
+    machine_pwm_state_t *state = get_state(self);
     if (pwm_freq_is_valid(&self->pwm)) {
+        if (state->deinitialized && state->duty_type == DUTY_NS) {
+            // Restore absolute pulse width after possible source-clock changes.
+            pwm_set_duty_ns(&self->pwm, state->duty);
+        }
         pwm_start(&self->pwm);
     }
+    state->deinitialized = false;
 }
 
 // PWM(pin [, args])
@@ -575,6 +590,7 @@ static mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args
         for (size_t i = 0; i < 4; ++i) {
             machine_pwm_state_t *state = &machine_pwm_state[pwm_base_index + i];
             state->duty_type = DUTY_NOT_SET;
+            state->deinitialized = false;
         }
     }
 
@@ -584,6 +600,7 @@ static mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args
         // Arguments given, so reset the state.
         machine_pwm_state_t *state = get_state(self);
         state->duty_type = DUTY_NOT_SET;
+        CCRx(timer_id_to_reg(self->pwm.tim_id), self->pwm.channel) = 0;
         pwm_set_polarity(&self->pwm, PWM_POLARITY_NORMAL);
     }
 
@@ -601,7 +618,7 @@ static mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type, size_t n_args
 void machine_pwm_deinit_all(void) {
     for (size_t i = 0; i < MP_ARRAY_SIZE(machine_pwm_obj); ++i) {
         machine_pwm_state_t *state = &machine_pwm_state[i];
-        if (state->duty_type != DUTY_NOT_SET) {
+        if (timer_pwm_active & (1U << machine_pwm_obj[i].pwm.tim_id)) {
             state->duty_type = DUTY_NOT_SET;
             mp_machine_pwm_deinit((machine_pwm_obj_t *)&machine_pwm_obj[i]);
         }
@@ -611,6 +628,7 @@ void machine_pwm_deinit_all(void) {
 
 static void mp_machine_pwm_deinit(machine_pwm_obj_t *self) {
     pwm_deinit(&self->pwm);
+    get_state(self)->deinitialized = true;
 }
 
 static mp_obj_t mp_machine_pwm_freq_get(machine_pwm_obj_t *self) {
@@ -630,15 +648,21 @@ static void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t freq) {
         mp_raise_ValueError(MP_ERROR_TEXT("freq too large"));
     }
 
-    // Update the duty cycle of all active channels that use this TIM.
+    // Update configured channels, including duties waiting for their first frequency.
+    get_state(self)->deinitialized = false;
     size_t pwm_base_index = (self - &machine_pwm_obj[0]) & ~(NUM_CHANNELS_PER_TIMER - 1);
     for (size_t i = 0; i < NUM_CHANNELS_PER_TIMER; ++i) {
         machine_pwm_obj_t *obj = (machine_pwm_obj_t *)&machine_pwm_obj[pwm_base_index + i];
         machine_pwm_state_t *state = &machine_pwm_state[pwm_base_index + i];
         if (state->duty_type == DUTY_U16) {
-            mp_machine_pwm_duty_set_u16(obj, state->duty);
+            pwm_set_duty_u16(&obj->pwm, state->duty);
         } else if (state->duty_type == DUTY_NS) {
-            mp_machine_pwm_duty_set_ns(obj, state->duty);
+            pwm_set_duty_ns(&obj->pwm, state->duty);
+        } else {
+            continue;
+        }
+        if (!state->deinitialized) {
+            pwm_start(&obj->pwm);
         }
     }
 }
@@ -657,6 +681,7 @@ static void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty_u
     machine_pwm_state_t *state = get_state(self);
     state->duty = duty_u16;
     state->duty_type = DUTY_U16;
+    state->deinitialized = false;
 
     if (pwm_freq_is_valid(&self->pwm)) {
         pwm_set_duty_u16(&self->pwm, duty_u16);
@@ -677,6 +702,7 @@ static void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty_ns
     machine_pwm_state_t *state = get_state(self);
     state->duty = duty_ns;
     state->duty_type = DUTY_NS;
+    state->deinitialized = false;
 
     if (pwm_freq_is_valid(&self->pwm)) {
         pwm_set_duty_ns(&self->pwm, duty_ns);
