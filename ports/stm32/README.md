@@ -262,8 +262,18 @@ in `tests/ports/stm32/machine_adc_c5.py` (internal channels, no fixture),
 `machine_adc_c5_pins.py` (opt-in known-voltage inputs), and
 `machine_dac_c5.py` (Nucleo/WeAct, opt-in PA4-unconnected confirmation and
 same-pad ADC readback). See the test headers for fixture module names and
-contents. External-voltage accuracy, loading/settling, and operation across
-clock changes and low-power transitions still need physical validation.
+contents. XIAO checks cover internal conversions at 48/144 MHz, IRQ-masked
+reads, clock-change guards, ADC1/ADC2 input-only routing, shared-handle
+restart, soft-reset cleanup and 1,000 construct/deinit cycles with stable
+collected heap. Known external voltages have not yet been tested.
+The XIAO's factory VREFINT calibration data produces an estimated analog
+reference supply of about 3.75 V, inconsistent with the board's nominal
+3.3 V rail. The cause is unresolved; verify the supply with a meter and use
+known-voltage inputs before relying on absolute voltage accuracy. No guessed
+gain or factory-calibration correction is applied.
+DAC output accuracy, loading/settling and low-power transitions still need
+physical validation. On the XIAO, only DAC argument rejection is tested;
+PA4 is not driven and the DAC bus gate remains disabled.
 
 `pyb.RTC` exposes calendar initialization and `datetime()` read/write on the
 C5 boards. The XIAO, Nucleo and WeAct hardware provide a 32.768 kHz LSE crystal.
