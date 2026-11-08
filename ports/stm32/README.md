@@ -403,11 +403,18 @@ external SPI flash is not used for this filesystem.
 The WeAct reserves 128 KiB at `0x08060000` to `0x08080000` for its FAT filesystem,
 with an 8 KiB page cache. Firmware starts at `0x08000000` and is limited to the
 preceding 384 KiB; application-only updates must leave the filesystem untouched.
+The Nucleo uses the same 256 KiB FAT layout as the XIAO: storage at
+`0x080c0000` to `0x08100000`, with an 8 KiB page cache. Its application starts
+at `0x08000000` and is limited to the preceding 768 KiB. Existing valid FAT
+volumes are mounted without formatting. Nucleo hardware checks cover cached
+multi-page writes, seek/append/rename, imports from `/flash`, and file and
+`main.py` startup persistence across soft and full MCU resets.
 
 USB remains CDC-only; use file operations or `mpremote` to transfer files.
 Close files and call `os.sync()` before hard reset or removing power. This uses
 the existing cached STM32 FAT backend, not a power-fail-safe flash filesystem.
-Internal flash filesystem storage remains disabled on the Nucleo.
+Use application-only programming when updating firmware; a whole-chip erase
+also erases the filesystem.
 
 `machine.time_pulse_us()` uses the microsecond tick clock; timeouts are returned
 as negative values as in the common machine API. `machine.bitstream()` uses the

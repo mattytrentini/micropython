@@ -5,7 +5,7 @@
 /* Specify the memory areas */
 MEMORY
 {
-    FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K   /* 1MB total flash */
+    FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 768K    /* application, before FLASH_FS */
     FLASH_FS (rx)   : ORIGIN = 0x080C0000, LENGTH = 256K    /* last 256K for filesystem */
     RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 248K    /* SRAM1+SRAM2 - 8K for FS cache */
     FS_CACHE (xrw)  : ORIGIN = 0x2003e000, LENGTH = 8K      /* last 8K of SRAM2 */

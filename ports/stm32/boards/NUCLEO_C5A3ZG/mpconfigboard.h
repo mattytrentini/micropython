@@ -2,7 +2,7 @@
 #define MICROPY_HW_MCU_NAME                 "STM32C5A3ZG"
 
 #define MICROPY_PY_PYB_LEGACY               (0)
-#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (0)
+#define MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE (1)
 #define MICROPY_PY_MACHINE_MEM_BACKUP       (1)
 #define MICROPY_HW_ENABLE_RTC               (1)
 // The Nucleo-64 board includes a 32.768 kHz LSE crystal.
@@ -19,7 +19,7 @@
 #define MICROPY_HW_USB_MSC                  (0)
 #define MICROPY_HW_USB_PRODUCT_FS_STRING    "NUCLEO-C5"
 #define MICROPY_HW_HAS_SWITCH               (1)
-#define MICROPY_HW_HAS_FLASH                (0)
+#define MICROPY_HW_HAS_FLASH                (1)
 
 // The board has a 48MHz HSE oscillator, use PSI to get 144MHz SYSCLK
 // MICROPY_HW_CLK_VALUE is set from HSE_VALUE by mpconfigboard_common.h
