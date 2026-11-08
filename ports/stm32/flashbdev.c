@@ -74,6 +74,30 @@ static uint32_t flash_tick_counter_last_write;
 
 static void flash_bdev_irq_handler(void);
 
+#if FLASH_BDEV_NATIVE_LFS2
+// Called with the storage IRQ masked. Preserve dirty state on a flash error.
+static int flash_bdev_sync_native(void) {
+    if (flash_flags & FLASH_FLAG_DIRTY) {
+        if (!(flash_flags & FLASH_FLAG_ERASED)) {
+            int ret = flash_erase(flash_cache_sector_start);
+            if (ret != 0) {
+                return ret;
+            }
+            flash_flags |= FLASH_FLAG_ERASED;
+        }
+        int ret = flash_write(flash_cache_sector_start, (const uint32_t *)CACHE_MEM_START_ADDR, flash_cache_sector_size / 4);
+        if (ret != 0) {
+            return ret;
+        }
+        flash_flags = 0;
+        led_state(PYB_LED_RED, 0);
+    }
+    // A subsequent legacy read/write must reload the physical flash.
+    flash_cache_sector_start = (uint32_t)-1;
+    return 0;
+}
+#endif
+
 int32_t flash_bdev_ioctl(uint32_t op, uint32_t arg) {
     (void)arg;
     switch (op) {
@@ -93,6 +117,11 @@ int32_t flash_bdev_ioctl(uint32_t op, uint32_t arg) {
 
         case BDEV_IOCTL_SYNC: {
             uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH); // prevent cache flushing and USB access
+            #if FLASH_BDEV_NATIVE_LFS2
+            int ret = flash_bdev_sync_native();
+            restore_irq_pri(basepri);
+            return ret;
+            #else
             if (flash_flags & FLASH_FLAG_DIRTY) {
                 flash_flags |= FLASH_FLAG_FORCE_WRITE;
                 while (flash_flags & FLASH_FLAG_DIRTY) {
@@ -101,6 +130,7 @@ int32_t flash_bdev_ioctl(uint32_t op, uint32_t arg) {
             }
             restore_irq_pri(basepri);
             return 0;
+            #endif
         }
     }
     return -MP_EINVAL;
@@ -114,7 +144,13 @@ static uint8_t *flash_cache_get_addr_for_write(uint32_t flash_addr) {
         flash_sector_size = FLASH_SECTOR_SIZE_MAX;
     }
     if (flash_cache_sector_start != flash_sector_start) {
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (flash_bdev_ioctl(BDEV_IOCTL_SYNC, 0) != 0) {
+            return NULL;
+        }
+        #else
         flash_bdev_ioctl(BDEV_IOCTL_SYNC, 0);
+        #endif
         memcpy((void *)CACHE_MEM_START_ADDR, (const void *)flash_sector_start, flash_sector_size);
         flash_cache_sector_start = flash_sector_start;
         flash_cache_sector_size = flash_sector_size;
@@ -159,7 +195,13 @@ static void flash_bdev_irq_handler(void) {
 
     // This code erases the flash directly, waiting for it to finish
     if (!(flash_flags & FLASH_FLAG_ERASED)) {
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (flash_erase(flash_cache_sector_start) != 0) {
+            return;
+        }
+        #else
         flash_erase(flash_cache_sector_start);
+        #endif
         flash_flags |= FLASH_FLAG_ERASED;
         return;
     }
@@ -168,7 +210,13 @@ static void flash_bdev_irq_handler(void) {
     // On file close and flash unmount we get a forced write, so we can afford to wait a while
     if ((flash_flags & FLASH_FLAG_FORCE_WRITE) || HAL_GetTick() - flash_tick_counter_last_write >= 5000) {
         // sync the cache RAM buffer by writing it to the flash page
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (flash_write(flash_cache_sector_start, (const uint32_t *)CACHE_MEM_START_ADDR, flash_cache_sector_size / 4) != 0) {
+            return;
+        }
+        #else
         flash_write(flash_cache_sector_start, (const uint32_t *)CACHE_MEM_START_ADDR, flash_cache_sector_size / 4);
+        #endif
         // clear the flash flags now that we have a clean cache
         flash_flags = 0;
         // indicate a clean cache with LED off
@@ -197,11 +245,103 @@ bool flash_bdev_writeblock(const uint8_t *src, uint32_t block) {
     }
     uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH); // prevent cache flushing and USB access
     uint8_t *dest = flash_cache_get_addr_for_write(flash_addr);
+    #if FLASH_BDEV_NATIVE_LFS2
+    if (dest == NULL) {
+        restore_irq_pri(basepri);
+        return false;
+    }
+    #endif
     memcpy(dest, src, FLASH_BLOCK_SIZE);
     restore_irq_pri(basepri);
     return true;
 }
 
+#if FLASH_BDEV_NATIVE_LFS2
+
+// Validate the complete request before syncing the legacy cache or changing flash.
+static int flash_bdev_native_range(uint32_t block, uint32_t offset, uint32_t len) {
+    uint32_t size = (FLASH_MEM_SEG1_NUM_BLOCKS + FLASH_MEM_SEG2_NUM_BLOCKS) * FLASH_BLOCK_SIZE;
+    if (FLASH_MEM_SEG1_START_ADDR % FLASH_PAGE_SIZE != 0
+        || (FLASH_MEM_SEG1_NUM_BLOCKS * FLASH_BLOCK_SIZE) % FLASH_PAGE_SIZE != 0
+        #ifdef FLASH_MEM_SEG2_START_ADDR
+        || FLASH_MEM_SEG2_START_ADDR % FLASH_PAGE_SIZE != 0
+        || (FLASH_MEM_SEG2_NUM_BLOCKS * FLASH_BLOCK_SIZE) % FLASH_PAGE_SIZE != 0
+        #endif
+        || block >= size / FLASH_PAGE_SIZE || offset >= FLASH_PAGE_SIZE) {
+        return -MP_EINVAL;
+    }
+    uint32_t start = block * FLASH_PAGE_SIZE + offset;
+    return len <= size - start ? 0 : -MP_EINVAL;
+}
+
+int flash_bdev_readblocks_ext(uint8_t *dest, uint32_t block, uint32_t offset, uint32_t len) {
+    int ret = flash_bdev_native_range(block, offset, len);
+    if (ret != 0 || len == 0) {
+        return ret;
+    }
+    if (dest == NULL) {
+        return -MP_EINVAL;
+    }
+    uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH);
+    ret = flash_bdev_sync_native();
+    while (ret == 0 && len != 0) {
+        uint32_t chunk = MIN(len, FLASH_PAGE_SIZE - offset);
+        uint32_t addr = convert_block_to_flash_addr(block * (FLASH_PAGE_SIZE / FLASH_BLOCK_SIZE));
+        memcpy(dest, (const void *)(addr + offset), chunk);
+        dest += chunk;
+        len -= chunk;
+        ++block;
+        offset = 0;
+    }
+    restore_irq_pri(basepri);
+    return ret;
+}
+
+int flash_bdev_writeblocks_ext(const uint8_t *src, uint32_t block, uint32_t offset, uint32_t len) {
+    int ret = flash_bdev_native_range(block, offset, len);
+    if (ret != 0 || (offset & 15) != 0 || (len & 15) != 0
+        || (len != 0 && (src == NULL || ((uintptr_t)src & 3) != 0))) {
+        return -MP_EINVAL;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH);
+    ret = flash_bdev_sync_native();
+    while (ret == 0 && len != 0) {
+        uint32_t chunk = MIN(len, FLASH_PAGE_SIZE - offset);
+        uint32_t addr = convert_block_to_flash_addr(block * (FLASH_PAGE_SIZE / FLASH_BLOCK_SIZE));
+        ret = flash_write(addr + offset, (const uint32_t *)src, chunk / sizeof(uint32_t));
+        src += chunk;
+        len -= chunk;
+        ++block;
+        offset = 0;
+    }
+    restore_irq_pri(basepri);
+    return ret;
+}
+
+int flash_bdev_eraseblocks_ext(uint32_t block, uint32_t len) {
+    int ret = flash_bdev_native_range(block, 0, len);
+    if (ret != 0 || len % FLASH_PAGE_SIZE != 0) {
+        return -MP_EINVAL;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH);
+    ret = flash_bdev_sync_native();
+    while (ret == 0 && len != 0) {
+        uint32_t addr = convert_block_to_flash_addr(block * (FLASH_PAGE_SIZE / FLASH_BLOCK_SIZE));
+        ret = flash_erase(addr);
+        len -= FLASH_PAGE_SIZE;
+        ++block;
+    }
+    restore_irq_pri(basepri);
+    return ret;
+}
+
+#else
 int flash_bdev_readblocks_ext(uint8_t *dest, uint32_t block, uint32_t offset, uint32_t len) {
     // Get data from flash memory, possibly via cache
     while (len) {
@@ -241,5 +381,7 @@ int flash_bdev_writeblocks_ext(const uint8_t *src, uint32_t block, uint32_t offs
     }
     return 0;
 }
+
+#endif // FLASH_BDEV_NATIVE_LFS2
 
 #endif // MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE

@@ -26,6 +26,8 @@
 
 #include "py/runtime.h"
 #include "py/mperrno.h"
+#include "py/stream.h"
+#include "extmod/vfs_lfs.h"
 #include "extmod/vfs_fat.h"
 #include "systick.h"
 #include "led.h"
@@ -34,7 +36,7 @@
 
 #if MICROPY_HW_ENABLE_STORAGE
 
-#if MICROPY_VFS_FAT
+#if MICROPY_VFS_FAT || (defined(STM32C5) && MICROPY_VFS_LFS2)
 
 static const char fresh_boot_py[] =
     "# boot.py -- run on boot to configure USB and filesystem\r\n"
@@ -43,7 +45,7 @@ static const char fresh_boot_py[] =
     "import machine\r\n"
     "import pyb\r\n"
     "#pyb.main('main.py') # main script to run after this one\r\n"
-#if MICROPY_HW_ENABLE_USB
+#if MICROPY_HW_ENABLE_USB && MICROPY_VFS_FAT
 #if MICROPY_HW_TINYUSB_STACK
     "#usb = machine.USBDevice()\r\n"
     "#usb.builtin_driver = machine.USBDevice.BUILTIN_DEFAULT  # CDC + MSC\r\n"
@@ -64,7 +66,7 @@ static const char fresh_main_py[] =
     "# main.py -- put your code here!\r\n"
 ;
 
-#if MICROPY_HW_ENABLE_USB
+#if MICROPY_HW_ENABLE_USB && MICROPY_VFS_FAT
 static const char fresh_pybcdc_inf[] =
 #include "genhdr/pybcdc_inf.h"
 ;
@@ -94,11 +96,13 @@ typedef struct _factory_file_t {
 static const factory_file_t factory_files[] = {
     {"boot.py", sizeof(fresh_boot_py) - 1, fresh_boot_py},
     {"main.py", sizeof(fresh_main_py) - 1, fresh_main_py},
-    #if MICROPY_HW_ENABLE_USB
+    #if MICROPY_HW_ENABLE_USB && MICROPY_VFS_FAT
     {"pybcdc.inf", sizeof(fresh_pybcdc_inf) - 1, fresh_pybcdc_inf},
     {"README.txt", sizeof(fresh_readme_txt) - 1, fresh_readme_txt},
     #endif
 };
+
+#if MICROPY_VFS_FAT
 
 MP_WEAK void factory_reset_make_files(FATFS *fatfs) {
     for (int i = 0; i < MP_ARRAY_SIZE(factory_files); ++i) {
@@ -140,6 +144,63 @@ MP_WEAK int factory_reset_create_filesystem(void) {
 
     return 0; // success
 }
+
+#else
+
+MP_WEAK int factory_reset_create_filesystem(void) {
+    led_state(PYB_LED_GREEN, 1);
+    uint32_t start_tick = HAL_GetTick();
+    volatile mp_obj_t vfs = MP_OBJ_NULL;
+    int ret = 0;
+    nlr_buf_t nlr;
+    if (nlr_push(&nlr) == 0) {
+        mp_obj_t bdev = pyb_flash_new_obj(0, -1);
+        mp_obj_t args[4];
+        mp_load_method(MP_OBJ_FROM_PTR(&mp_type_vfs_lfs2), MP_QSTR_mkfs, args);
+        args[2] = bdev;
+        mp_call_method_n_kw(1, 0, args);
+        vfs = MP_OBJ_TYPE_GET_SLOT(&mp_type_vfs_lfs2, make_new)(&mp_type_vfs_lfs2, 1, 0, &bdev);
+
+        // Populate the mounted VFS directly; main.c mounts it at /flash afterward.
+        for (size_t i = 0; i < MP_ARRAY_SIZE(factory_files); ++i) {
+            const factory_file_t *f = &factory_files[i];
+            mp_load_method(vfs, MP_QSTR_open, args);
+            args[2] = mp_obj_new_str_from_cstr(f->name);
+            args[3] = MP_OBJ_NEW_QSTR(MP_QSTR_w);
+            mp_obj_t file = mp_call_method_n_kw(2, 0, args);
+            int errcode = 0;
+            mp_uint_t written = mp_stream_write_exactly(file, f->data, f->len, &errcode);
+            mp_stream_close(file);
+            if (written != f->len) {
+                mp_raise_OSError(errcode == 0 ? MP_EIO : errcode);
+            }
+        }
+        nlr_pop();
+    } else {
+        mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+        ret = -MP_EIO;
+    }
+
+    if (vfs != MP_OBJ_NULL) {
+        if (nlr_push(&nlr) == 0) {
+            mp_obj_t args[2];
+            mp_load_method(vfs, MP_QSTR_umount, args);
+            mp_call_method_n_kw(0, 0, args);
+            nlr_pop();
+        } else {
+            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+            ret = -MP_EIO;
+        }
+    }
+    systick_wait_at_least(start_tick, 200);
+    led_state(PYB_LED_GREEN, 0);
+    if (ret != 0) {
+        mp_printf(&mp_plat_print, "MPY: can't create flash filesystem\n");
+    }
+    return ret;
+}
+
+#endif
 
 #else
 

@@ -33,6 +33,13 @@
 #else
 #define FLASH_BLOCK_SIZE (512)
 #endif
+
+// Only C5 littlefs-only builds use the physical internal-flash block protocol.
+#if defined(STM32C5) && MICROPY_VFS_LFS2 && !MICROPY_VFS_FAT && MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
+#define FLASH_BDEV_NATIVE_LFS2 (1)
+#else
+#define FLASH_BDEV_NATIVE_LFS2 (0)
+#endif
 #define FLASH_PART1_START_BLOCK (0x100)
 
 // Try to match Python-level VFS block protocol where possible for these constants
@@ -60,6 +67,9 @@ bool flash_bdev_readblock(uint8_t *dest, uint32_t block);
 bool flash_bdev_writeblock(const uint8_t *src, uint32_t block);
 int flash_bdev_readblocks_ext(uint8_t *dest, uint32_t block, uint32_t offset, uint32_t len);
 int flash_bdev_writeblocks_ext(const uint8_t *src, uint32_t block, uint32_t offset, uint32_t len);
+#if FLASH_BDEV_NATIVE_LFS2
+int flash_bdev_eraseblocks_ext(uint32_t block, uint32_t len);
+#endif
 
 typedef struct _spi_bdev_t {
     mp_spiflash_t spiflash;

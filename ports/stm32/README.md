@@ -393,28 +393,28 @@ Flash programming delay is explicitly set for 144 MHz during startup rather
 than inherited from a bootloader. Clock transitions select delay 0 at the
 lower HSE frequency and delay 2 at 144 MHz, in clock-safe order.
 
-The XIAO enables a FAT filesystem at `/flash` using the existing 256 KiB internal
-flash reservation (`0x080c0000` to `0x08100000`) and an 8 KiB page cache. First boot
-creates the filesystem and default startup files using the STM32 factory-reset
-path. Files, imported modules, `boot.py` and `main.py` persist across resets and
-application-only UF2 updates. The factory TinyUF2 bootloader occupies the first
-32 KiB and is outside both the application and filesystem regions. The onboard
-external SPI flash is not used for this filesystem.
-The WeAct reserves 128 KiB at `0x08060000` to `0x08080000` for its FAT filesystem,
-with an 8 KiB page cache. Firmware starts at `0x08000000` and is limited to the
-preceding 384 KiB; application-only updates must leave the filesystem untouched.
-The Nucleo uses the same 256 KiB FAT layout as the XIAO: storage at
-`0x080c0000` to `0x08100000`, with an 8 KiB page cache. Its application starts
-at `0x08000000` and is limited to the preceding 768 KiB. Existing valid FAT
-volumes are mounted without formatting. Nucleo hardware checks cover cached
-multi-page writes, seek/append/rename, imports from `/flash`, and file and
-`main.py` startup persistence across soft and full MCU resets.
+All three C5 boards (Nucleo, XIAO, WeAct) use a littlefs v2 filesystem at `/flash`
+on internal flash, not FAT. The block device is the native flash protocol: 8 KiB
+erase blocks (the C5 page size), direct reads, and synchronous 16-byte-aligned
+programming that bypasses the legacy 512-byte FAT page cache. Out-of-range or
+misaligned block requests return a negative errno before any flash is modified.
+First boot (or any boot that finds blank or old FAT storage) formats littlefs and
+creates `boot.py` and `main.py`; an existing littlefs volume that fails to mount
+is never reformatted automatically. Existing FAT contents are lost on the first
+boot of littlefs firmware; back up files first. Factory reset recreates the
+littlefs volume and default files. USB has no MSC drive; use file operations or
+`mpremote` to transfer files.
 
-USB remains CDC-only; use file operations or `mpremote` to transfer files.
-Close files and call `os.sync()` before hard reset or removing power. This uses
-the existing cached STM32 FAT backend, not a power-fail-safe flash filesystem.
-Use application-only programming when updating firmware; a whole-chip erase
-also erases the filesystem.
+Storage regions are unchanged: XIAO and Nucleo use `0x080c0000` to `0x08100000`
+(256 KiB, 32 blocks); the WeAct uses `0x08060000` to `0x08080000` (128 KiB).
+The XIAO's factory TinyUF2 bootloader (first 32 KiB) is outside both application
+and filesystem. Application-only programming (UF2 or hex) leaves the filesystem
+untouched; whole-chip erase erases it. The Nucleo and XIAO have been checked on
+hardware (first-boot format, multi-page file I/O, directories, persistence across
+reset, bounds checks). The WeAct builds but has not been run on hardware.
+
+Close files and call `os.sync()` before reset or power removal. littlefs is
+power-loss resilient for metadata but unclosed files are not flushed.
 
 `machine.time_pulse_us()` uses the microsecond tick clock; timeouts are returned
 as negative values as in the common machine API. `machine.bitstream()` uses the

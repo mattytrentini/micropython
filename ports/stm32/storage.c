@@ -262,7 +262,12 @@ int storage_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t num_bl
 
 #elif (MICROPY_VFS_LFS1 || MICROPY_VFS_LFS2) && MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
 // Board uses littlefs and internal flash, so enable extended block protocol on internal flash
-#define MICROPY_HW_BDEV_BLOCKSIZE_EXT (FLASH_BLOCK_SIZE)
+    #if FLASH_BDEV_NATIVE_LFS2
+    #define MICROPY_HW_BDEV_BLOCKSIZE_EXT (FLASH_PAGE_SIZE)
+    #define MICROPY_HW_BDEV_ERASEBLOCKS_EXT(bl, len) (flash_bdev_eraseblocks_ext((bl), (len)))
+    #else
+    #define MICROPY_HW_BDEV_BLOCKSIZE_EXT (FLASH_BLOCK_SIZE)
+    #endif
 #define MICROPY_HW_BDEV_READBLOCKS_EXT(dest, bl, off, len) (flash_bdev_readblocks_ext((dest), (bl), (off), (len)))
 #define MICROPY_HW_BDEV_WRITEBLOCKS_EXT(dest, bl, off, len) (flash_bdev_writeblocks_ext((dest), (bl), (off), (len)))
 #endif
@@ -303,7 +308,7 @@ mp_obj_t pyb_flash_new_obj(mp_int_t start, mp_int_t len) {
 
     if (len == -1) {
         len = bl_len - start;
-    } else if (!(0 < len && start + len <= bl_len && len % MICROPY_HW_BDEV_BLOCKSIZE_EXT == 0)) {
+    } else if (!(0 < len && (mp_uint_t)len <= bl_len - start && len % MICROPY_HW_BDEV_BLOCKSIZE_EXT == 0)) {
         return mp_const_none;
     }
 
@@ -349,6 +354,17 @@ static mp_obj_t pyb_flash_make_new(const mp_obj_type_t *type, size_t n_args, siz
     return self;
 }
 
+#if FLASH_BDEV_NATIVE_LFS2
+// Use division/subtraction so malformed block numbers cannot wrap into the region.
+static bool pyb_flash_valid_range(pyb_flash_obj_t *self, uint32_t block, uint32_t block_size, uint32_t offset, size_t len) {
+    if (block >= self->len / block_size || offset >= block_size) {
+        return false;
+    }
+    uint32_t start = block * block_size + offset;
+    return len <= self->len - start;
+}
+#endif
+
 static mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
     pyb_flash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     uint32_t block_num = mp_obj_get_int(args[1]);
@@ -356,6 +372,12 @@ static mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
     mp_int_t ret = -MP_EIO;
     if (n_args == 3) {
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (self != &pyb_flash_obj && (!pyb_flash_valid_range(self, block_num, FLASH_BLOCK_SIZE, 0, bufinfo.len)
+            || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+        }
+        #endif
         // Cast self->start to signed in case it's pyb_flash_obj with negative start
         block_num += FLASH_PART1_START_BLOCK + (int32_t)self->start / FLASH_BLOCK_SIZE;
         ret = storage_read_blocks(bufinfo.buf, block_num, bufinfo.len / FLASH_BLOCK_SIZE);
@@ -364,7 +386,11 @@ static mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
     else if (self != &pyb_flash_obj) {
         // Extended block read on a sub-section of the flash storage
         uint32_t offset = mp_obj_get_int(args[3]);
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, offset, bufinfo.len)) {
+        #else
         if ((block_num * MICROPY_HW_BDEV_BLOCKSIZE_EXT) >= self->len) {
+        #endif
             ret = -MP_EFAULT; // Bad address
         } else {
             block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;
@@ -383,6 +409,12 @@ static mp_obj_t pyb_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
     mp_int_t ret = -MP_EIO;
     if (n_args == 3) {
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (self != &pyb_flash_obj && (!pyb_flash_valid_range(self, block_num, FLASH_BLOCK_SIZE, 0, bufinfo.len)
+            || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+        }
+        #endif
         // Cast self->start to signed in case it's pyb_flash_obj with negative start
         block_num += FLASH_PART1_START_BLOCK + (int32_t)self->start / FLASH_BLOCK_SIZE;
         ret = storage_write_blocks(bufinfo.buf, block_num, bufinfo.len / FLASH_BLOCK_SIZE);
@@ -391,7 +423,11 @@ static mp_obj_t pyb_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
     else if (self != &pyb_flash_obj) {
         // Extended block write on a sub-section of the flash storage
         uint32_t offset = mp_obj_get_int(args[3]);
+        #if FLASH_BDEV_NATIVE_LFS2
+        if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, offset, bufinfo.len)) {
+        #else
         if ((block_num * MICROPY_HW_BDEV_BLOCKSIZE_EXT) >= self->len) {
+        #endif
             ret = -MP_EFAULT; // Bad address
         } else {
             block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;
@@ -416,17 +452,31 @@ static mp_obj_t pyb_flash_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_
                     ret = -1;
                 } else {
                     // Switch to use native block size of the underlying storage.
+                    #if FLASH_BDEV_NATIVE_LFS2
+                    ret = flash_bdev_ioctl(BDEV_IOCTL_SYNC, 0);
+                    if (ret != 0) {
+                        return MP_OBJ_NEW_SMALL_INT(ret);
+                    }
+                    #endif
                     self->use_native_block_size = true;
                 }
             }
             return MP_OBJ_NEW_SMALL_INT(ret);
         }
         case MP_BLOCKDEV_IOCTL_DEINIT:
+            #if FLASH_BDEV_NATIVE_LFS2
+            return MP_OBJ_NEW_SMALL_INT(flash_bdev_ioctl(BDEV_IOCTL_SYNC, 0));
+            #else
             storage_flush();
             return MP_OBJ_NEW_SMALL_INT(0);                                             // TODO properly
+            #endif
         case MP_BLOCKDEV_IOCTL_SYNC:
+            #if FLASH_BDEV_NATIVE_LFS2
+            return MP_OBJ_NEW_SMALL_INT(flash_bdev_ioctl(BDEV_IOCTL_SYNC, 0));
+            #else
             storage_flush();
             return MP_OBJ_NEW_SMALL_INT(0);
+            #endif
 
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT: {
             mp_int_t n;
@@ -453,7 +503,15 @@ static mp_obj_t pyb_flash_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_
             int ret = 0;
             #if defined(MICROPY_HW_BDEV_ERASEBLOCKS_EXT)
             if (self->use_native_block_size) {
+                #if FLASH_BDEV_NATIVE_LFS2
+                mp_int_t relative_block = mp_obj_get_int(arg_in);
+                if (relative_block < 0 || !pyb_flash_valid_range(self, relative_block, MICROPY_HW_BDEV_BLOCKSIZE_EXT, 0, MICROPY_HW_BDEV_BLOCKSIZE_EXT)) {
+                    return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+                }
+                mp_int_t block_num = self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT + relative_block;
+                #else
                 mp_int_t block_num = self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT + mp_obj_get_int(arg_in);
+                #endif
 
                 ret = MICROPY_HW_BDEV_ERASEBLOCKS_EXT(block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT);
             }
