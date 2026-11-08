@@ -266,11 +266,20 @@ contents. XIAO checks cover internal conversions at 48/144 MHz, IRQ-masked
 reads, clock-change guards, ADC1/ADC2 input-only routing, shared-handle
 restart, soft-reset cleanup and 1,000 construct/deinit cycles with stable
 collected heap. Known external voltages have not yet been tested.
-The XIAO's factory VREFINT calibration data produces an estimated analog
-reference supply of about 3.75 V, inconsistent with the board's nominal
-3.3 V rail. The cause is unresolved; verify the supply with a meter and use
-known-voltage inputs before relying on absolute voltage accuracy. No guessed
-gain or factory-calibration correction is applied.
+Absolute ADC reference accuracy remains unresolved. In three restart/settling
+runs, the vendor formula `3300 * VREFINT_CAL / raw12` estimated about 3.64 V
+on the Nucleo and 3.77 V on the XIAO, rather than their nominal 3.3 V rails.
+These are computed estimates, not measured supplies. ST-Link reported a
+3.31 V target supply on the Nucleo, which is not an independent measurement of
+VREF+. First-versus-settled readings and internal-channel switching did not
+explain the discrepancy; gain compensation was unity and offset registers
+were zero on both devices. Verify VREF+/VDDA with a meter and apply known
+external input voltages before relying on absolute voltage accuracy. No
+guessed gain or factory-calibration correction is applied.
+ST has [clarified the calibration storage format](https://community.st.com/stm32-mcus-products-25/stm32c5-calibration-values-document-discrepancy-169077):
+`VREFINT_CAL` is a right-aligned 12-bit result stored in a 16-bit halfword,
+not the 24-/32-bit value described in early documentation. Read only the
+documented halfwords at `0x08fff810`, `0x08fff814` and `0x08fff818`.
 DAC output accuracy, loading/settling and low-power transitions still need
 physical validation. On the XIAO, only DAC argument rejection is tested;
 PA4 is not driven and the DAC bus gate remains disabled.
@@ -398,23 +407,38 @@ on internal flash, not FAT. The block device is the native flash protocol: 8 KiB
 erase blocks (the C5 page size), direct reads, and synchronous 16-byte-aligned
 programming that bypasses the legacy 512-byte FAT page cache. Out-of-range or
 misaligned block requests return a negative errno before any flash is modified.
-First boot (or any boot that finds blank or old FAT storage) formats littlefs and
-creates `boot.py` and `main.py`; an existing littlefs volume that fails to mount
-is never reformatted automatically. Existing FAT contents are lost on the first
-boot of littlefs firmware; back up files first. Factory reset recreates the
-littlefs volume and default files. USB has no MSC drive; use file operations or
-`mpremote` to transfer files.
+Automatic formatting is restricted to a completely erased storage region or
+a recognisable legacy FAT boot sector. It creates littlefs plus `boot.py` and
+`main.py`. Unrecognised nonblank data is left untouched for recovery, including
+littlefs whose superblock signatures have both been damaged or erased.
+Existing FAT contents are lost during migration; back up files first.
+Explicit factory reset recreates the littlefs volume and default files.
+USB has no MSC drive; use file operations or `mpremote` to transfer files.
 
 Storage regions are unchanged: XIAO and Nucleo use `0x080c0000` to `0x08100000`
 (256 KiB, 32 blocks); the WeAct uses `0x08060000` to `0x08080000` (128 KiB).
 The XIAO's factory TinyUF2 bootloader (first 32 KiB) is outside both application
 and filesystem. Application-only programming (UF2 or hex) leaves the filesystem
-untouched; whole-chip erase erases it. The Nucleo and XIAO have been checked on
-hardware (first-boot format, multi-page file I/O, directories, persistence across
-reset, bounds checks). The WeAct builds but has not been run on hardware.
+untouched; whole-chip erase erases it. Nucleo and XIAO hardware checks cover
+factory formatting, multi-page file I/O, seek/append/rename/import, root metadata
+compaction and remounting, full-filesystem recovery, soft/hard-reset startup,
+MCU reset with an unclosed file, native-block bounds and application-update
+preservation. Nucleo checks also cover blank/FAT automatic formatting and
+preservation of damaged or unrecognised metadata. The WeAct builds but has not
+been run with this filesystem firmware on hardware.
 
-Close files and call `os.sync()` before reset or power removal. littlefs is
-power-loss resilient for metadata but unclosed files are not flushed.
+After `pyb.Flash(start=0).ioctl(1, 1)` selects native mode, the advertised block
+size and both block-protocol forms use 8 KiB blocks. Standard writes erase
+complete blocks before programming; extended writes require a prior explicit
+erase and 16-byte-aligned offsets/lengths. Programming buffers must be
+four-byte aligned.
+
+A strict host NOR model running the production C5 block driver and littlefs
+recovered committed data at all 2,588 before/after erase and quadword-program
+cut points in a create/replace transaction. This does not simulate partially
+completed electrical erase/program pulses or prove physical power-cut behaviour.
+Close files and call `os.sync()` before reset or power removal; unclosed changes
+are not guaranteed to survive.
 
 `machine.time_pulse_us()` uses the microsecond tick clock; timeouts are returned
 as negative values as in the common machine API. `machine.bitstream()` uses the

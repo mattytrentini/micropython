@@ -373,8 +373,15 @@ static mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
     mp_int_t ret = -MP_EIO;
     if (n_args == 3) {
         #if FLASH_BDEV_NATIVE_LFS2
+        if (self->use_native_block_size) {
+            if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, 0, bufinfo.len)) {
+                return MP_OBJ_NEW_SMALL_INT(-MP_EFAULT);
+            }
+            block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;
+            return MP_OBJ_NEW_SMALL_INT(MICROPY_HW_BDEV_READBLOCKS_EXT(bufinfo.buf, block_num, 0, bufinfo.len));
+        }
         if (self != &pyb_flash_obj && (!pyb_flash_valid_range(self, block_num, FLASH_BLOCK_SIZE, 0, bufinfo.len)
-            || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
+                                       || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
         }
         #endif
@@ -390,7 +397,7 @@ static mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
         if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, offset, bufinfo.len)) {
         #else
         if ((block_num * MICROPY_HW_BDEV_BLOCKSIZE_EXT) >= self->len) {
-        #endif
+            #endif
             ret = -MP_EFAULT; // Bad address
         } else {
             block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;
@@ -410,8 +417,22 @@ static mp_obj_t pyb_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
     mp_int_t ret = -MP_EIO;
     if (n_args == 3) {
         #if FLASH_BDEV_NATIVE_LFS2
+        if (self->use_native_block_size) {
+            if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, 0, bufinfo.len)
+                || bufinfo.len % MICROPY_HW_BDEV_BLOCKSIZE_EXT != 0 || ((uintptr_t)bufinfo.buf & 3) != 0) {
+                return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+            }
+            block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;
+            // The standard protocol erases complete blocks before programming.
+            // Extended writes leave erasing to the filesystem.
+            ret = MICROPY_HW_BDEV_ERASEBLOCKS_EXT(block_num, bufinfo.len);
+            if (ret == 0) {
+                ret = MICROPY_HW_BDEV_WRITEBLOCKS_EXT(bufinfo.buf, block_num, 0, bufinfo.len);
+            }
+            return MP_OBJ_NEW_SMALL_INT(ret);
+        }
         if (self != &pyb_flash_obj && (!pyb_flash_valid_range(self, block_num, FLASH_BLOCK_SIZE, 0, bufinfo.len)
-            || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
+                                       || bufinfo.len % FLASH_BLOCK_SIZE != 0)) {
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
         }
         #endif
@@ -427,7 +448,7 @@ static mp_obj_t pyb_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
         if (!pyb_flash_valid_range(self, block_num, MICROPY_HW_BDEV_BLOCKSIZE_EXT, offset, bufinfo.len)) {
         #else
         if ((block_num * MICROPY_HW_BDEV_BLOCKSIZE_EXT) >= self->len) {
-        #endif
+            #endif
             ret = -MP_EFAULT; // Bad address
         } else {
             block_num += self->start / MICROPY_HW_BDEV_BLOCKSIZE_EXT;

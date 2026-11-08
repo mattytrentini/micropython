@@ -144,6 +144,45 @@ static mp_obj_t pyb_main(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_a
 MP_DEFINE_CONST_FUN_OBJ_KW(pyb_main_obj, 1, pyb_main);
 
 #if MICROPY_HW_FLASH_MOUNT_AT_BOOT
+#if defined(STM32C5) && MICROPY_VFS_LFS2 && !MICROPY_VFS_FAT
+static bool flash_fs_can_format(void) {
+    uint32_t buf[FLASH_BLOCK_SIZE / sizeof(uint32_t)];
+    if (storage_readblocks_ext((uint8_t *)buf, 0, 0, sizeof(buf)) != 0) {
+        return false;
+    }
+    const uint8_t *boot = (const uint8_t *)buf;
+    // Permit the intentional migration from the previous FAT default.
+    if ((boot[0] == 0xeb || boot[0] == 0xe9)
+        && boot[11] == 0 && boot[12] == 2
+        && boot[510] == 0x55 && boot[511] == 0xaa
+        && (memcmp(&boot[54], "FAT", 3) == 0 || memcmp(&boot[82], "FAT32", 5) == 0)) {
+        return true;
+    }
+
+    // Missing littlefs signatures do not prove the medium is blank. Preserve
+    // unrecognised data for recovery, even if only the superblocks were erased.
+    int32_t sectors = flash_bdev_ioctl(BDEV_IOCTL_NUM_BLOCKS, 0);
+    if (sectors <= 0) {
+        return false;
+    }
+    uint32_t blocks = sectors / (FLASH_PAGE_SIZE / FLASH_BLOCK_SIZE);
+    for (uint32_t block = 0; block < blocks; ++block) {
+        for (uint32_t offset = 0; offset < FLASH_PAGE_SIZE; offset += sizeof(buf)) {
+            if ((block != 0 || offset != 0)
+                && storage_readblocks_ext((uint8_t *)buf, block, offset, sizeof(buf)) != 0) {
+                return false;
+            }
+            for (size_t i = 0; i < MP_ARRAY_SIZE(buf); ++i) {
+                if (buf[i] != UINT32_MAX) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+#endif
+
 // avoid inlining to avoid stack usage within main()
 MP_NOINLINE static bool init_flash_fs(uint reset_mode) {
     if (reset_mode == BOARDCTRL_RESET_MODE_FACTORY_FILESYSTEM) {
@@ -180,7 +219,7 @@ MP_NOINLINE static bool init_flash_fs(uint reset_mode) {
         #if defined(STM32C5) && MICROPY_VFS_LFS2 && !MICROPY_VFS_FAT
         flash_read_failed |= ret != 0;
         if (ret == 0 && (memcmp(&buf[8], "littlefs", 8) == 0
-            || memcmp(&buf[40], "littlefs", 8) == 0)) {
+                         || memcmp(&buf[40], "littlefs", 8) == 0)) {
             recognized_lfs = true;
         }
         #endif
@@ -229,15 +268,16 @@ MP_NOINLINE static bool init_flash_fs(uint reset_mode) {
 
     #if defined(STM32C5) && MICROPY_VFS_LFS2 && !MICROPY_VFS_FAT
     if (ret == -MP_ENODEV && !recognized_lfs && !flash_read_failed
-        && reset_mode != BOARDCTRL_RESET_MODE_FACTORY_FILESYSTEM) {
-        // Blank or old FAT storage: create littlefs, but never erase a detected
-        // littlefs filesystem just because mounting it failed.
+        && reset_mode != BOARDCTRL_RESET_MODE_FACTORY_FILESYSTEM
+        && flash_fs_can_format()) {
+        // Only blank storage or a recognisable legacy FAT volume may be
+        // formatted automatically. Preserve damaged littlefs for recovery.
     #else
     if (ret == -MP_ENODEV && bdev == MP_OBJ_FROM_PTR(&pyb_flash_obj)
         && reset_mode != BOARDCTRL_RESET_MODE_FACTORY_FILESYSTEM) {
         // No filesystem, bdev is still the default (so didn't detect a possibly corrupt littlefs),
         // and didn't already create a filesystem, so try to create a fresh one now.
-    #endif
+        #endif
         ret = factory_reset_create_filesystem();
         if (ret == 0) {
             ret = mp_vfs_mount_and_chdir_protected(bdev, mount_point);
