@@ -12,8 +12,8 @@
 #define MICROPY_HW_RTC_USE_LSE              (1)
 #define MICROPY_HW_RTC_LSE_DRIVE           (LL_RCC_LSEDRIVE_MEDIUMHIGH)
 #define MICROPY_HW_ENABLE_RNG               (1)
-#define MICROPY_HW_ENABLE_ADC               (0)
-#define MICROPY_HW_ENABLE_DAC               (0)
+#define MICROPY_HW_ENABLE_ADC               (0) // Legacy pyb.ADC; use machine.ADC.
+#define MICROPY_HW_ENABLE_DAC               (0) // Legacy pyb.DAC; use machine.DAC.
 // 48 MHz HSE crystal, with PSI generating a 144 MHz system clock.
 #define MICROPY_HW_CLK_USE_HSE              (1)
 #define MICROPY_HW_CLK_PSI_REF              (HAL_RCC_PSI_REF_48MHZ)

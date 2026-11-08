@@ -10,8 +10,8 @@
 #define MICROPY_HW_RTC_LSE_DRIVE           (LL_RCC_LSEDRIVE_MEDIUMHIGH)
 #define MICROPY_HW_ENABLE_RNG               (1)
 #define MICROPY_HW_I2S1                      (1)
-#define MICROPY_HW_ENABLE_ADC               (0) // TODO: enable once ADC driver adapted
-#define MICROPY_HW_ENABLE_DAC               (0) // TODO: enable once DAC driver adapted
+#define MICROPY_HW_ENABLE_ADC               (0) // Legacy pyb.ADC; use machine.ADC.
+#define MICROPY_HW_ENABLE_DAC               (0) // Legacy pyb.DAC; use machine.DAC.
 #define MICROPY_HW_ENABLE_USB               (1)
 #define MICROPY_HW_TINYUSB_STACK            (1)
 #define MICROPY_HW_ENABLE_USB_RUNTIME_DEVICE (1)

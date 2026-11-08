@@ -291,6 +291,7 @@ SRC_C += \
 	gccollect.c \
 	help.c \
 	machine_bitstream.c \
+	machine_dac.c \
 	machine_i2c.c \
 	machine_spi.c \
 	modpyb.c \

@@ -6,13 +6,13 @@ class DAC -- digital to analog conversion
 
 The DAC is used to output an analog voltage based on a digital value.
 
-The output voltage will be between 0 and 3.3V.
+The output voltage range follows the analog reference supply, usually 0 to 3.3V.
 
-DAC is currently supported on ESP32 [#esp32_dac]_, SAMD and Renesas RA.
+DAC is currently supported on ESP32 [#esp32_dac]_, SAMD, Renesas RA and STM32C5.
 
 .. note::
-  The STM32 port has similar functionality to ``machine.DAC``. See
-  :ref:`pyb.DAC <pyb.DAC>` for details.
+  Other STM32 families expose DAC functionality through
+  :ref:`pyb.DAC <pyb.DAC>`.
 
 Example usage (ESP32)::
 
@@ -29,7 +29,8 @@ Constructors
 
   Construct a new DAC object.
 
-  ``id`` is a pin object (ESP32 and Renesas RA) or an index to a DAC resource (SAMD).
+  ``id`` is a pin object (ESP32, Renesas RA and STM32C5) or an index to a DAC
+  resource (SAMD and STM32C5).
 
 .. note::
   On the ESP32, DAC functionality is available on pins 25 and 26. On the
@@ -40,6 +41,16 @@ Constructors
   SAMD21 has one DAC resource, SAMD51 has two. See :ref:`SAMD Quickref <samd_quickref>`
   for more details.
 
+.. note::
+  On STM32C5, ``DAC(1)`` and ``DAC(Pin.cpu.A4)`` select the same buffered,
+  12-bit output. Repeated construction preserves the active output. Its voltage
+  range follows the board's analog reference supply.
+
+.. warning::
+  The XIAO STM32C5 connects PA4 to its battery-sensing circuit. Do not enable
+  DAC on an unmodified XIAO board.
+
+
 Methods
 -------
 
@@ -48,7 +59,8 @@ Methods
   Output an analog voltage to the pin connected to the DAC.
 
   ``value`` is a representation of the desired output; a linear interpolation of
-  0-3.3V, though the range differs depending on the port and micro, see below:
+  the analog reference range. The numeric range differs depending on the port
+  and micro, see below:
 
   +--------------+------+--------+
   | *Port/micro* | Bits | Range  |
@@ -61,6 +73,14 @@ Methods
   +--------------+------+--------+
   | Renesas RA   | 12   | 0-4095 |
   +--------------+------+--------+
+  | STM32C5      | 12   | 0-4095 |
+  +--------------+------+--------+
+
+.. method:: DAC.deinit()
+
+  On STM32C5, disable the output and release its dedicated peripheral bus clock.
+  Subsequent writes raise ``OSError(ENODEV)``. Constructing the DAC again
+  restarts its output at zero.
 
 .. rubric:: Footnotes
 

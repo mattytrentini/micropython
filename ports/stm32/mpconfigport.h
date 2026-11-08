@@ -137,10 +137,11 @@
 #define MICROPY_PY_MACHINE_FREQ_NUM_ARGS_MAX (4)
 #define MICROPY_PY_MACHINE_BOOTLOADER (1)
 #endif
-#if defined(STM32C5)
-#define MICROPY_PY_MACHINE_ADC      (0)
-#else
 #define MICROPY_PY_MACHINE_ADC      (1)
+#if defined(STM32C5)
+#define MICROPY_PY_MACHINE_ADC_INCLUDEFILE "ports/stm32/machine_adc_c5.c"
+#define MICROPY_PY_MACHINE_ADC_DEINIT (1)
+#else
 #define MICROPY_PY_MACHINE_ADC_INCLUDEFILE "ports/stm32/machine_adc.c"
 #endif
 #ifndef MICROPY_PY_MACHINE_BITSTREAM
@@ -157,6 +158,9 @@
 #define MICROPY_PY_MACHINE_CAN_INCLUDEFILE "ports/stm32/machine_can_c5.c"
 #else
 #define MICROPY_PY_MACHINE_CAN_INCLUDEFILE "ports/stm32/machine_can.c"
+#endif
+#if defined(STM32C5)
+#define MICROPY_PY_MACHINE_DAC      (1)
 #endif
 #define MICROPY_PY_MACHINE_DHT_READINTO (1)
 // Backup memory via BKPSRAM or RTC BKP registers.

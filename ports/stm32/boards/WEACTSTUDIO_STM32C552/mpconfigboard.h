@@ -10,8 +10,8 @@
 #define MICROPY_HW_RTC_USE_LSE              (1)
 #define MICROPY_HW_RTC_LSE_DRIVE            (LL_RCC_LSEDRIVE_MEDIUMHIGH)
 #define MICROPY_HW_ENABLE_RNG               (1)
-#define MICROPY_HW_ENABLE_ADC               (0)
-#define MICROPY_HW_ENABLE_DAC               (0)
+#define MICROPY_HW_ENABLE_ADC               (0) // Legacy pyb.ADC; use machine.ADC.
+#define MICROPY_HW_ENABLE_DAC               (0) // Legacy pyb.DAC; use machine.DAC.
 #define MICROPY_HW_ENABLE_I2S               (1)
 #define MICROPY_HW_I2S1                     (1)
 

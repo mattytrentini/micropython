@@ -784,7 +784,10 @@ soft_reset_exit:
     #if MICROPY_PY_MACHINE_CAN
     machine_can_deinit_all();
     #endif
-    #if MICROPY_HW_ENABLE_DAC
+    #if defined(STM32C5) && MICROPY_PY_MACHINE_ADC
+    machine_adc_deinit_all();
+    #endif
+    #if MICROPY_HW_ENABLE_DAC || MICROPY_PY_MACHINE_DAC
     dac_deinit_all();
     #endif
     #if MICROPY_PY_MACHINE_PWM

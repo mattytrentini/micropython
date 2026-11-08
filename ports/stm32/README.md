@@ -226,6 +226,45 @@ External GPIO interrupts are available through `machine.Pin.irq()` and
 Only one GPIO port can own each numbered EXTI line at a time. Other non-GPIO
 sources are not exposed through `pyb.ExtInt`.
 
+`machine.ADC` supports C5 single-ended 12-bit conversions, scaled to the full
+0–65535 range by `read_u16()`. Construct with a `Pin`, or with an ADC1 channel
+number (0–11). `ADC.CORE_VREF` and `ADC.CORE_TEMP` select the internal reference
+and temperature-sensor inputs; numeric channels 13 and 12 are their aliases.
+`ADC.VREF` is the synthetic full-scale channel, not a voltage measurement.
+There is no `read_uv()`, VBAT channel, attenuation or configurable sample time.
+External inputs use 25 ADC cycles and internal inputs 289 cycles.
+Calibration, regulator startup and conversions have bounded waits and raise
+`OSError` on failure rather than returning stale conversion data.
+Pin routing selects ADC1, ADC2 or ADC3 from generated metadata; PB0/PB1/PB2
+prefer ADC2 because their alternative ADC3 channel numbers differ.
+The C5A3 routing follows the
+[STM32C5A3ZG chip data](https://github.com/embassy-rs/stm32-data-generated/blob/main/data/chips/STM32C5A3ZG.json).
+`ADC.deinit()` disables that ADC instance without resetting the shared ADC12
+block. Other live handles re-enable it on their next read. Soft reset resets
+and gates the ADC instances without disturbing DAC1.
+
+`machine.DAC(1)` or `machine.DAC(Pin.cpu.A4)` selects C5's single external
+DAC1 channel. `write(value)` accepts unsigned 12-bit values (0–4095); invalid
+values raise `ValueError` without changing the output. The output buffer is
+enabled. Constructors alias the same peripheral and preserve its output while
+active. `deinit()` disables the output and its dedicated bus gate; writes then
+raise `OSError(ENODEV)`. Reconstruction restarts at zero. Waveform generation,
+timed/DMA output, and the legacy `pyb.ADC`/`pyb.DAC` APIs are not enabled.
+**Do not use DAC on an unmodified XIAO: PA4 is its battery-sensing input,
+not an unconnected expansion pin.**
+
+Both converters use the shared PSIS / 8 (18 MHz) analog kernel clock. The mux
+is never changed underneath an enabled analog consumer. Active ADC or DAC
+instances block system-clock changes and STOP; deinitialize them first.
+Host register-model smoke checks exercise the production backends, but do not
+establish electrical accuracy or silicon timing. Hardware checks are prepared
+in `tests/ports/stm32/machine_adc_c5.py` (internal channels, no fixture),
+`machine_adc_c5_pins.py` (opt-in known-voltage inputs), and
+`machine_dac_c5.py` (Nucleo/WeAct, opt-in PA4-unconnected confirmation and
+same-pad ADC readback). See the test headers for fixture module names and
+contents. External-voltage accuracy, loading/settling, and operation across
+clock changes and low-power transitions still need physical validation.
+
 `pyb.RTC` exposes calendar initialization and `datetime()` read/write on the
 C5 boards. The XIAO, Nucleo and WeAct hardware provide a 32.768 kHz LSE crystal.
 When RTCSEL is unset, startup uses the board-configured oscillator drive and

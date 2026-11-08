@@ -32,6 +32,12 @@ void machine_init(void);
 void machine_deinit(void);
 void machine_i2s_init0();
 void machine_pwm_deinit_all(void);
+#if defined(STM32C5) && MICROPY_PY_MACHINE_ADC
+void machine_adc_deinit_all(void);
+#endif
+#if defined(STM32C5) && MICROPY_PY_MACHINE_DAC
+extern const mp_obj_type_t machine_dac_type;
+#endif
 #if MICROPY_PY_MACHINE_MEM_BACKUP
 void machine_mem_backup_init(void);
 #endif

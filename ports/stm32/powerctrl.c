@@ -39,10 +39,14 @@
 #endif
 
 #if defined(STM32C5)
+#include "analog_c5.h"
 
 // C5 clock changes are deliberately limited to the two board-qualified sources.
 // In particular, PSI and its divider are not changed: PSIDIV3 supplies USB.
 static bool powerctrl_c5_peripherals_busy(bool allow_repl_uart) {
+    if (analog_c5_is_active()) {
+        return true;
+    }
     #if defined(I2C1)
     if (I2C1->CR1 & I2C_CR1_PE) {
         return true;
